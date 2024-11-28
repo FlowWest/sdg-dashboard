@@ -17,12 +17,17 @@ if uploaded_file:
 
     full_merged_df['week'] = full_merged_df['datetime'].dt.isocalendar().week
     weekly_velocity = full_merged_df.groupby(["week", "Velocity_Category"])["time_unit"].sum().reset_index()
+    
     daily_velocity = full_merged_df.groupby(["week", "date", "Velocity_Category"])["time_unit"].sum().reset_index()
     avg_daily_velocity = daily_velocity.groupby("Velocity_Category")['time_unit'].mean().reset_index()
-
+    
     daily_gate = full_merged_df.groupby(["week", "date","DGL"])["time_unit"].sum().reset_index()
     avg_daily_gate = daily_gate.groupby("DGL")['time_unit'].mean().reset_index()
     
+    velocity_text = f"The daily average of velocity over 8ft/s over the entire time period is {avg_daily_velocity['time_unit'][0]:.2f} hours. The daily average of velocity under 8ft/s over the entire time period is {avg_daily_velocity['time_unit'][1]:.2f} hours."
+    dgl_text = f"The daily average of the DGL Gate over the entire time period is {avg_daily_gate['time_unit'][0]:.2f} hours.  The daily average of the DGL Gate closed over the entire period is {avg_daily_gate['time_unit'][1]:.2f} hours."
+    
+
     summary_stats_vel = (full_merged_df.groupby(["week", "date", "Velocity_Category"]).
         agg(
             total_velocity_duration = ("time_unit", "sum")
@@ -88,13 +93,12 @@ if uploaded_file:
         "streak_duration": "Streak Duration (hrs)",
         "gate_min_datetime": "Gate Min Datetime",
         "gate_max_datetime": "Gate Max Datetime",
-        "gate_count": "Gate Time UnitCount",
+        "gate_count": "Gate Count",
         "gate_streak_duration": "Gate Streak Duration (hrs)",
         "time_unit": "Time Unit (hrs)",
-        "count": "Velocity Time Unit Count"
     }
     )
-    # df = df.reset_index(drop=True)
+    df = df.reset_index(drop=True)
     
     #-------------------------------------------------------------------------------------------------------------------------------
     # Markdown
@@ -102,7 +106,7 @@ if uploaded_file:
     st.dataframe(df.style.format(precision=2).set_table_styles(
         [{
             'selector': 'thead th',
-            'props': [('background-color', '#4CAF50'), ('color', 'grey'), ('text-align', 'center')]
+            'props': [('background-color', '#4CAF50'), ('color', 'white'), ('text-align', 'center')]
         },
          {
             'selector': 'tbody tr:hover',
@@ -113,12 +117,11 @@ if uploaded_file:
     # Altair Visualization
     st.write("### Interactive Visualization")
     st.altair_chart(combined_bar_charts, use_container_width=True, theme=None)
+    
+    st.write("### Data Summary")
+    st.write(velocity_text)
+    st.write(dgl_text)
+    
 
-    # with st.container():
-    #     st.altair_chart(combined_bar_charts)
-    # st.altair_chart(vel_bar_chart, use_container_width=True)
-
-# Render the gate status chart
-    # st.altair_chart(gate_bar_chart, use_container_width=True)
 else:
     st.write("Please upload a CSV file to see the visualization.")
