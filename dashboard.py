@@ -2,6 +2,9 @@ import streamlit as st
 import pandas as pd
 import altair as alt
 
+#TODO: add border to top barchart
+#TODO: add elevation graph based on week
+
 # Title and description
 # st.set_page_config(layout="wide")
 st.title("Exploratory Data Visualizations for SDG Analysis")
@@ -129,7 +132,7 @@ if uploaded_file:
     #-------------------------------------------------------------------------------------------------------------------------------
     # Markdown
     st.write("### Data Preview")
-    st.dataframe(df.style.format(precision=2).set_table_styles(
+    st.dataframe(df.head(20).style.format(precision=2).set_table_styles(
         [{
             'selector': 'thead th',
             'props': [('background-color', '#4CAF50'), ('color', 'white'), ('text-align', 'center')]
