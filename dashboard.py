@@ -30,14 +30,14 @@ if uploaded_file:
     min_date = min(daily_velocity['date'])
     max_date = max(daily_velocity['date']) 
 
-    summary_stats_title = f"Summary Stats from {min_date} to {max_date}."
+    summary_stats_title = f"Summary stats from {min_date} to {max_date}."
 
     summary_data = {
         "Metric": [
-            f"Daily average velocity {avg_daily_velocity['Velocity_Category'][0]}",
-            f"Daily average velocity {avg_daily_velocity['Velocity_Category'][1]}",
-            f"Daily average DGL Gate {avg_daily_gate['DGL'][0]}",
-            f"Daily average DGL Gate {avg_daily_gate['DGL'][1]}"
+            f"Daily average velocity {avg_daily_velocity['Velocity_Category'][0]} duration",
+            f"Daily average velocity {avg_daily_velocity['Velocity_Category'][1]} duration",
+            f"Daily average DGL Gate {avg_daily_gate['DGL'][0]} duration",
+            f"Daily average DGL Gate {avg_daily_gate['DGL'][1]} duration"
         ],
         "Hours": [
             f"{avg_daily_velocity['time_unit'][0]:.2f}",
@@ -76,7 +76,7 @@ if uploaded_file:
     ).properties(
         title="Daily Velocity Over/Under 8 ft/s Duration Summary"
     )
-    upper_vel = base_vel.mark_bar(width=alt.RelativeBandSize(0.7)).encode(
+    upper_vel = base_vel.mark_bar(width=alt.RelativeBandSize(0.7),stroke='grey', strokeWidth=0.5).encode(
         alt.X('date:T').scale(domain=brush)
     )
     lower_vel = base_vel.properties(
@@ -96,7 +96,7 @@ if uploaded_file:
         title="Daily Gate Status Duration Summary"
     )
     
-    upper_gate = base_gate.mark_bar(width=alt.RelativeBandSize(0.7)).encode(
+    upper_gate = base_gate.mark_bar(width=alt.RelativeBandSize(0.7), stroke='grey', strokeWidth=0.5).encode(
         alt.X('date:T').scale(domain=brush)
     )
     lower_gate = base_gate.properties(
@@ -143,6 +143,9 @@ if uploaded_file:
         }]
     ), use_container_width=True)
 
+    st.write("### Data Summary")
+    st.write(summary_stats_title)
+    st.table(summary_df)   
     # Altair Visualization
     st.write('#')
     st.write("### Visualization 1: Daily Gate Status Duration vs Daily Velocity Flow Duration")
@@ -154,6 +157,36 @@ if uploaded_file:
     
     # Filter the data manually based on user input
     filtered_df = full_merged_df[full_merged_df['week'] == selected_week]
+    #-------------------------------------------------------------------------------------------------------
+    weekly_summary_stats_title = f"Daily summary stats from week {selected_week} ."
+    weekly_daily_velocity = filtered_df.groupby(["date", "Velocity_Category"])["time_unit"].sum().reset_index()
+    weekly_avg_daily_velocity = weekly_daily_velocity.groupby("Velocity_Category")['time_unit'].mean().reset_index()
+    
+    weekly_daily_gate = filtered_df.groupby(["date","DGL"])["time_unit"].sum().reset_index()
+    weekly_avg_daily_gate = weekly_daily_gate.groupby("DGL")['time_unit'].mean().reset_index()
+    
+    weekly_min_date = min(weekly_daily_velocity['date'])
+    weekly_max_date = max(weekly_daily_velocity['date'])
+
+    weekly_summary_data = {
+        "Metric": [
+            f"Daily average velocity {weekly_avg_daily_velocity['Velocity_Category'][0]} duration",
+            f"Daily average velocity {weekly_avg_daily_velocity['Velocity_Category'][1]} duration",
+            f"Daily average DGL Gate {weekly_avg_daily_gate['DGL'][0]} duration",
+            f"Daily average DGL Gate {weekly_avg_daily_gate['DGL'][1]} duration"
+        ],
+        "Hours": [
+            f"{weekly_avg_daily_velocity['time_unit'][0]:.2f}",
+            f"{weekly_avg_daily_velocity['time_unit'][1]:.2f}",
+            f"{weekly_avg_daily_gate['time_unit'][0]:.2f}",
+            f"{weekly_avg_daily_gate['time_unit'][1]:.2f}"
+        ]
+    }
+
+    # Create a DataFrame
+    weekly_summary_df = pd.DataFrame(weekly_summary_data)
+    st.write(weekly_summary_stats_title)
+    st.table(weekly_summary_df)
     #-------------------------------------------------------------------------------------------------------
     # Create an Altair chart using the filtered data
     interval = alt.selection_interval(encodings=['x'],
@@ -270,22 +303,130 @@ if uploaded_file:
         height=400
     )
     velocity = velocity.properties(width=200, height=100)
+    # daily_velocity = daily_velocity.properties(width=200, height=100)
     velocity_duration = velocity_duration.properties(width=200, height=100)
     gate_duration = gate_duration.properties(width=200, height=100)
 
     text_summary = alt.vconcat(velocity, velocity_duration, gate_duration)
-
+    
     combined_chart = alt.hconcat(
         layered_chart,
+        # velocity
         text_summary
     )
-
-    # Display the chart in Streamlit
-    st.altair_chart(combined_chart, use_container_width=False)
     
-    st.write("### Data Summary")
-    st.write(summary_stats_title)
-    st.table(summary_df)    
+
+    elev_cols = ["FP2VMa", "Modeled_Historic"]
+
+    base_elevation = alt.Chart(filtered_df).mark_line().encode(
+        x=alt.X('yearmonthdatehoursminutes(datetime):T', title='Date', axis=alt.Axis(format='%b %d, %Y', labelAngle=-45)),
+        y=alt.Y('value:Q', title='Feet'),
+        color='model:N'
+    ).transform_fold(
+        ['FP2VMa', 'Modeled_Historic'],  # Columns to be "melted" into a long format
+        as_=['model', 'value']  # New column names
+    ).add_params(
+        interval
+    ).properties(
+        title="Weekly Summary of Minimum Stage At DGL"
+    )
+    yrule_wl = alt.Chart(filtered_df).mark_rule(color = "purple", strokeDash=[12, 6], size=1.5).encode(
+            y=alt.datum(2.3)
+    )
+    yrule_wl_text = alt.Chart(filtered_df).mark_text(
+        text="Water Level Compliance",
+        align="left",
+        baseline="bottom",
+        fontSize=12,
+        color="grey",
+        dx=5  # Offset text slightly to the right of the rule
+    ).encode(
+        y=alt.datum(2.3)  # Same y position as the rule
+    )
+    nearest_elev = alt.selection_point(nearest=True, on="pointerover",
+                                  fields=["datetime"], empty=False)
+    points_elev = base_elevation.mark_point().encode(
+        opacity=alt.condition(nearest_elev, alt.value(1), alt.value(0))
+    )
+    rules_elev = alt.Chart(filtered_df).mark_rule(color="gray", opacity=0).encode(
+        x="datetime:T",
+        opacity=alt.condition(nearest_elev, alt.value(0.3), alt.value(0)),
+    ).add_params(nearest_elev)
+    when_near = alt.when(nearest_elev)
+    text = base_elevation.mark_text(
+        align="left", dx=5, dy=-5
+    ).transform_calculate(
+        label='format(datum.value, ".2f") + " feet"'
+    ).encode(
+        text=when_near.then("label:N").otherwise(alt.value(" "))
+    )
+    average_scenario_stage = alt.Chart(filtered_df).mark_text(align='right').encode(
+            y=alt.Y('stat:N', axis=None),
+            text=alt.Text('summary:N')
+        ).transform_filter(
+            interval
+        ).transform_aggregate(
+            average_stage='mean(FP2VMa)'
+        ).transform_fold(
+            ['average_stage'],  # Separate each statistic
+            as_=['stat', 'value']
+        ).transform_calculate(
+            summary='format(datum.average_stage, ".2f") + " feet"'
+        )
+    avg_stage = average_scenario_stage.encode(text='summary:N').properties(
+            title=alt.Title(text='Average FP2VMa Minimum Stage', align='center')
+    )
+    duration_below_wl = alt.Chart(filtered_df).mark_text(align='right').encode(
+        y=alt.Y('stat:N', axis=None),
+            text=alt.Text('summary:N')
+        ).transform_filter(
+            interval
+        ).transform_filter(
+            alt.datum.FP2VMa < 2.3
+        ).transform_aggregate(
+            total_time_below_wl='sum(time_unit)'
+        ).transform_fold(
+            ['total_time_below_wl'],  # Separate each statistic
+            as_=['stat', 'value']
+        ).transform_calculate(
+            below_wl='format(datum.stat, ".2f") + " hour"'
+        )
+    tot_below_wl = average_scenario_stage.encode(text='below_wl:N').properties(
+            title=alt.Title(text='Total Time Below Water Level Compliance', align='center')
+    )
+    
+    avg_stage = avg_stage.properties(width=200, height=100)
+    tot_below_wl = tot_below_wl.properties(width=200, height=100)
+    # (base, points, yrule, rules, area_dgl_true
+    weekly_min_stage_chart = alt.layer(base_elevation, 
+                              points_elev, 
+                              yrule_wl, 
+                              yrule_wl_text,
+                              rules_elev,
+                              area_dgl_true,
+                              text
+    ).properties(width=700, height=400)
+    
+    combined_elev_text = alt.vconcat(
+        avg_stage,
+        tot_below_wl
+    )
+    combined_elev_chart = alt.hconcat(
+        weekly_min_stage_chart,
+        combined_elev_text
+    )
+    
+    # joint_chart = alt.vconcat(
+    #     combined_elev_chart,
+    #     combined_chart
+    # )
+    # Display the chart in Streamlit
+    # st.altair_chart(daily_velocity, use_container_width=False)
+    st.altair_chart(combined_chart, use_container_width=False, theme=None)
+    st.altair_chart(combined_elev_chart, use_container_width=False, theme=None)
+    # st.altair_chart(joint_chart, use_container_width=False, theme=None)
+
+ 
 
 else:
     st.write("Please upload a CSV file to see the visualization.")
