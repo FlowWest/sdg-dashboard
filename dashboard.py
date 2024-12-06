@@ -21,35 +21,69 @@ if uploaded_file:
     full_merged_df['week'] = full_merged_df['datetime'].dt.isocalendar().week
     weekly_velocity = full_merged_df.groupby(["week", "Velocity_Category"])["time_unit"].sum().reset_index()
     
-    daily_velocity = full_merged_df.groupby(["week", "date", "Velocity_Category"])["time_unit"].sum().reset_index()
-    avg_daily_velocity = daily_velocity.groupby("Velocity_Category")['time_unit'].mean().reset_index()
-    
-    daily_gate = full_merged_df.groupby(["week", "date","DGL"])["time_unit"].sum().reset_index()
-    avg_daily_gate = daily_gate.groupby("DGL")['time_unit'].mean().reset_index()
+    daily_velocity = full_merged_df.groupby(["date", "Velocity_Category"])["time_unit"].sum().reset_index()
+    avg_daily_velocity = pd.DataFrame(daily_velocity.groupby("Velocity_Category")['time_unit'].sum()/daily_velocity["date"].nunique()).reset_index()
+
+    daily_gate = full_merged_df.groupby(["date","DGL"])["time_unit"].sum().reset_index()
+    avg_daily_gate = pd.DataFrame(daily_gate.groupby("DGL")['time_unit'].sum()/daily_gate["date"].nunique()).reset_index()
+
+    daily_velocity_stats = full_merged_df.groupby(["date", "Velocity_Category"]).agg(
+        unique_consecutive_groups=("consecutive_groups", "nunique"),
+        total_time=("time_unit", "sum")
+    ).reset_index()
+
+    daily_velocity_stats["daily_average_time_per_consecutive_group"] = (
+        daily_velocity_stats["total_time"] / daily_velocity_stats["unique_consecutive_groups"]
+    )
+    overall_daily_average_per_duration_per_velocity = daily_velocity_stats.groupby(["Velocity_Category"])['daily_average_time_per_consecutive_group'].mean().reset_index()
+
+    daily_gate_stats = full_merged_df.groupby(["date", "DGL"]).agg(
+        unique_gate_count=("gate_count", "nunique"),
+        total_time=("time_unit", "sum")
+    ).reset_index()
+
+    daily_gate_stats["daily_average_time_per_consecutive_gate"] = (
+        daily_gate_stats["total_time"] / daily_gate_stats["unique_gate_count"]
+    )
+    overall_daily_average_per_duration_per_gate = daily_gate_stats.groupby(["DGL"])['daily_average_time_per_consecutive_gate'].mean().reset_index()
     
     min_date = min(daily_velocity['date'])
     max_date = max(daily_velocity['date']) 
 
-    summary_stats_title = f"Summary stats from {min_date} to {max_date}."
+    velocity_summary_stats_title = f"Velocity summary stats from {min_date} to {max_date}."
+    gate_summary_stats_title = f"Gate summary stats from {min_date} to {max_date}."
 
-    summary_data = {
+    velocity_summary_data = {
         "Metric": [
-            f"Daily average velocity {avg_daily_velocity['Velocity_Category'][0]} duration",
-            f"Daily average velocity {avg_daily_velocity['Velocity_Category'][1]} duration",
-            f"Daily average DGL Gate {avg_daily_gate['DGL'][0]} duration",
-            f"Daily average DGL Gate {avg_daily_gate['DGL'][1]} duration"
-        ],
-        "Hours": [
+            f"Daily average of total amount of time velocity {avg_daily_velocity['Velocity_Category'][0]} duration",
+            f"Daily average of total amount of time velocity {avg_daily_velocity['Velocity_Category'][1]} duration",
+            f"Daily average length of consecutive hours velocity {overall_daily_average_per_duration_per_velocity['Velocity_Category'][0]}",
+            f"Daily average length of consecutive hours velocity {overall_daily_average_per_duration_per_velocity['Velocity_Category'][1]}"
+            ],
+        "Hours":[
             f"{avg_daily_velocity['time_unit'][0]:.2f}",
             f"{avg_daily_velocity['time_unit'][1]:.2f}",
+            f"{overall_daily_average_per_duration_per_velocity['daily_average_time_per_consecutive_group'][0]:.2f}",
+            f"{overall_daily_average_per_duration_per_velocity['daily_average_time_per_consecutive_group'][1]:.2f}",
+        ]}
+    
+    gate_summary_data = {
+        "Metric": [
+            f"Daily average of total amount of time DGL Gate {avg_daily_gate['DGL'][0]}",
+            f"Daily average of total amount of time of DGL Gate {avg_daily_gate['DGL'][1]}",
+            f"Daily average length of consecutive hours DGL Gate {overall_daily_average_per_duration_per_gate['DGL'][0]}",
+            f"Daily average length of consecutive hours DGL Gate {overall_daily_average_per_duration_per_gate['DGL'][1]}"
+        ],
+        "Hours": [
             f"{avg_daily_gate['time_unit'][0]:.2f}",
-            f"{avg_daily_gate['time_unit'][1]:.2f}"
+            f"{avg_daily_gate['time_unit'][1]:.2f}",
+            f"{overall_daily_average_per_duration_per_gate['daily_average_time_per_consecutive_gate'][0]:.2f}",
+            f"{overall_daily_average_per_duration_per_gate['daily_average_time_per_consecutive_gate'][1]:.2f}"
         ]
     }
-
     # Create a DataFrame
-    summary_df = pd.DataFrame(summary_data)
-    
+    velocity_summary_df = pd.DataFrame(velocity_summary_data)
+    gate_summary_df = pd.DataFrame(gate_summary_data)
     # velocity_text = f"The daily average of velocity over 8ft/s over the entire time period is {avg_daily_velocity['time_unit'][0]:.2f} hours. The daily average of velocity under 8ft/s over the entire time period is {avg_daily_velocity['time_unit'][1]:.2f} hours."
     # dgl_text = f"The daily average of the DGL Gate over the entire time period is {avg_daily_gate['time_unit'][0]:.2f} hours.  The daily average of the DGL Gate closed over the entire period is {avg_daily_gate['time_unit'][1]:.2f} hours."
     
@@ -69,7 +103,7 @@ if uploaded_file:
     # velocity graph
     brush = alt.selection_interval(encodings=['x'], mark=alt.BrushConfig(stroke="cyan", strokeOpacity=1))
     base_vel = alt.Chart(summary_stats_vel, width=800, height=300).mark_bar(color="green").encode(
-            x=alt.X("date:T", title="Velocity Category"),
+            x=alt.X("date:T", title="Date"),
             y=alt.Y("total_velocity_duration:Q", title="Hours"),
             color=alt.condition(brush, 'Velocity_Category:N', alt.value('lightgray')),
             tooltip=["date:T", "Velocity_Category:N", "total_velocity_duration:Q"],
@@ -77,7 +111,7 @@ if uploaded_file:
         title="Daily Velocity Over/Under 8 ft/s Duration Summary"
     )
     upper_vel = base_vel.mark_bar(width=alt.RelativeBandSize(0.7),stroke='grey', strokeWidth=0.5).encode(
-        alt.X('date:T').scale(domain=brush)
+        alt.X('date:T', title="Date").scale(domain=brush)
     )
     lower_vel = base_vel.properties(
         height=90
@@ -88,7 +122,7 @@ if uploaded_file:
     base_gate = alt.Chart(summary_stats_dgl, width=800, height=300).mark_bar(
         color="steelblue",
     ).encode(
-        x=alt.X("date:T", title="Gate Status"), 
+        x=alt.X("date:T", title="Date"), 
         y=alt.Y("total_gate_duration:Q", title="Hours"),
         color=alt.condition(brush, 'DGL:N', alt.value('lightgray')),
         tooltip=["date:T","DGL:N", "total_gate_duration:Q"]
@@ -97,7 +131,7 @@ if uploaded_file:
     )
     
     upper_gate = base_gate.mark_bar(width=alt.RelativeBandSize(0.7), stroke='grey', strokeWidth=0.5).encode(
-        alt.X('date:T').scale(domain=brush)
+        alt.X('date:T', title="Date").scale(domain=brush)
     )
     lower_gate = base_gate.properties(
         height=90
@@ -144,8 +178,11 @@ if uploaded_file:
     ), use_container_width=True)
 
     st.write("### Data Summary")
-    st.write(summary_stats_title)
-    st.table(summary_df)   
+    st.write(velocity_summary_stats_title)
+    st.table(velocity_summary_df)   
+    st.write("")
+    st.write(gate_summary_stats_title)
+    st.table(gate_summary_df)
     # Altair Visualization
     st.write('#')
     st.write("### Visualization 1: Daily Gate Status Duration vs Daily Velocity Flow Duration")
@@ -170,10 +207,10 @@ if uploaded_file:
 
     weekly_summary_data = {
         "Metric": [
-            f"Daily average velocity {weekly_avg_daily_velocity['Velocity_Category'][0]} duration",
-            f"Daily average velocity {weekly_avg_daily_velocity['Velocity_Category'][1]} duration",
-            f"Daily average DGL Gate {weekly_avg_daily_gate['DGL'][0]} duration",
-            f"Daily average DGL Gate {weekly_avg_daily_gate['DGL'][1]} duration"
+            f"Daily average of total amount of time velocity  {weekly_avg_daily_velocity['Velocity_Category'][0]}",
+            f"Daily average of total amount of time velocity  {weekly_avg_daily_velocity['Velocity_Category'][1]}",
+            f"Daily average of total amount of time DGL Gate {weekly_avg_daily_gate['DGL'][0]}",
+            f"Daily average of total amount of time DGL Gate {weekly_avg_daily_gate['DGL'][1]}"
         ],
         "Hours": [
             f"{weekly_avg_daily_velocity['time_unit'][0]:.2f}",
@@ -376,27 +413,39 @@ if uploaded_file:
     avg_stage = average_scenario_stage.encode(text='summary:N').properties(
             title=alt.Title(text='Average FP2VMa Minimum Stage', align='center')
     )
-    duration_below_wl = alt.Chart(filtered_df).mark_text(align='right').encode(
-        y=alt.Y('stat:N', axis=None),
-            text=alt.Text('summary:N')
+    scenario_duration_below_wl = alt.Chart(filtered_df).mark_text(align='right').encode(
+        y=alt.Y('wl_stat:N', axis=None),
+            text=alt.Text('below_wl:N')
+        # ).transform_filter(
+        #     interval
+        ).transform_filter(
+            "datum.FP2VMa < 2.3"
+        ).transform_aggregate(
+            total_time_below_wl='sum(time_unit)'
+        ).transform_calculate(
+            below_wl='format(datum.total_time_below_wl, ".2f") + " hour"'
+        ).properties(
+            title=alt.Title(text='Scenario Below Water Level Compliance', align='center')
+        )
+
+    modeled_historic_below_wl = alt.Chart(filtered_df).mark_text(align='right').encode(
+        y=alt.Y('wl_stat:N', axis=None),
+            text=alt.Text('below_wl:N')
         ).transform_filter(
             interval
         ).transform_filter(
-            alt.datum.FP2VMa < 2.3
+            "datum.Modeled_Historic < 2.3"
         ).transform_aggregate(
             total_time_below_wl='sum(time_unit)'
-        ).transform_fold(
-            ['total_time_below_wl'],  # Separate each statistic
-            as_=['stat', 'value']
         ).transform_calculate(
-            below_wl='format(datum.stat, ".2f") + " hour"'
+            below_wl='format(datum.total_time_below_wl, ".2f") + " hour"'
+        ).properties(
+            title=alt.Title(text='Modeled Historic Below Water Level Compliance', align='center')
         )
-    tot_below_wl = average_scenario_stage.encode(text='below_wl:N').properties(
-            title=alt.Title(text='Total Time Below Water Level Compliance', align='center')
-    )
     
     avg_stage = avg_stage.properties(width=200, height=100)
-    tot_below_wl = tot_below_wl.properties(width=200, height=100)
+    scenario_duration_below_wl = scenario_duration_below_wl.properties(width=200, height=100)
+    modeled_historic_below_wl = modeled_historic_below_wl.properties(width=200, height=100)
     # (base, points, yrule, rules, area_dgl_true
     weekly_min_stage_chart = alt.layer(base_elevation, 
                               points_elev, 
@@ -409,7 +458,8 @@ if uploaded_file:
     
     combined_elev_text = alt.vconcat(
         avg_stage,
-        tot_below_wl
+        scenario_duration_below_wl,
+        modeled_historic_below_wl
     )
     combined_elev_chart = alt.hconcat(
         weekly_min_stage_chart,
