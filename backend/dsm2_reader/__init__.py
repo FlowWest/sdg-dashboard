@@ -4,7 +4,6 @@ import pandas as pd
 
 def get_all_data(dss):
     out = {}
-    parts_letters = ["A", "B", "C", "D", "E", "F"]
     cat = dss.get_catalog()
     paths = list(cat.recordTypeDict.keys())
     for path in paths:
