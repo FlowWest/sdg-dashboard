@@ -1,6 +1,8 @@
 from hecdss import HecDss
 import pandas as pd
 
+from typing import Dict
+
 
 def read_echo_file(filepath: str):
     with open(filepath, "r") as f:
@@ -32,7 +34,9 @@ def read_echo_file(filepath: str):
         return df
 
 
-def get_all_data_from_dsm2_dss(dss, part_names=None, concat=False):
+def get_all_data_from_dsm2_dss(
+    dss: HecDss, part_names: Dict[str, str] | None = None, concat: bool = False
+) -> pd.DataFrame | Dict[str, pd.DataFrame]:
     out = {}
     cat = dss.get_catalog()
     paths = list(cat.recordTypeDict.keys())
