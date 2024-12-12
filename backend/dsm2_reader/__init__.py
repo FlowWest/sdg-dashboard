@@ -35,7 +35,9 @@ def read_echo_file(filepath: str):
 
 
 def get_all_data_from_dsm2_dss(
-    dss: HecDss, part_names: Dict[str, str] | None = None, concat: bool = False
+    dss: HecDss,
+    part_names: Dict[str, str] | None = None,
+    concat: bool = False,
 ) -> pd.DataFrame | Dict[str, pd.DataFrame]:
     out = {}
     cat = dss.get_catalog()
@@ -44,9 +46,9 @@ def get_all_data_from_dsm2_dss(
         path_data = dss.get(path)
         out[path] = pd.DataFrame(
             {
-                "datetime": path_data.get_dates(),
-                "value": path_data.get_values(),
-                "unit": path_data.units,
+                "datetime": path_data.get_dates(),  # type: ignore
+                "value": path_data.get_values(),  # type: ignore
+                "unit": path_data.units,  # type: ignore
             }
         )
         if part_names is not None:
@@ -66,3 +68,17 @@ def get_all_data_from_dsm2_dss(
     if concat:
         out = pd.concat(out.values())
     return out
+
+
+def read_hydro_dss(filepath):
+    dss = HecDss(filepath)
+    part_names = {"B": "gate", "C": "parameter", "F": "scenario"}
+    data = get_all_data_from_dsm2_dss(dss, part_names=part_names, concat=True)
+    return data
+
+
+def read_gates_dss(filepath):
+    dss = HecDss(filepath)
+    part_names = {"B": "gate_op", "F": "scenario"}
+    data = get_all_data_from_dsm2_dss(dss, part_names=part_names, concat=True)
+    return data
