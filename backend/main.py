@@ -15,8 +15,3 @@ app = FastAPI()
 @app.get("/")
 async def root():
     return {"message": "hello world"}
-
-
-@app.post("/items/")
-async def create_item(item: Item):
-    return item.dict()
