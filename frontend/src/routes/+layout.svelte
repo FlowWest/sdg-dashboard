@@ -36,16 +36,16 @@
 				</li>
 			</ul>
 		</div>
-		<a class="btn btn-ghost text-xl">South Delta Gates</a>
+		<a href="/" class="btn btn-ghost text-xl">South Delta Gates</a>
 	</div>
 	<div class="navbar-center hidden lg:flex">
 		<ul class="menu menu-horizontal px-1">
-			<li><a>Dashboard</a></li>
+			<li><a href="/">Dashboard</a></li>
 			<li>
 				<details>
 					<summary>Tools</summary>
 					<ul class="p-2">
-						<li><a class="whitespace-nowrap">DSM2 Process</a></li>
+						<li><a href="/dsm2process" class="whitespace-nowrap">DSM2 Process</a></li>
 						<li><a class="whitespace-nowrap">Batch 6 to 7</a></li>
 					</ul>
 				</details>
