@@ -54,4 +54,8 @@
 	</div>
 </div>
 
-{@render children()}
+<div class="h-screen bg-base-200">
+	<div class="p-5">
+		{@render children()}
+	</div>
+</div>
