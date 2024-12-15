@@ -22,4 +22,4 @@ primary_region = 'lax'
   cpus = 1
 
 curl http://backend-polished-pine-2971.internal:8000/
-curl _apps.internal
+curl http://_apps.internal

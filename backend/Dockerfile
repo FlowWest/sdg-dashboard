@@ -8,6 +8,7 @@ WORKDIR /app
 RUN python -m venv .venv
 COPY requirements.txt ./
 RUN .venv/bin/pip install -r requirements.txt
+RUN .venv/bin/pip install -i https://test.pypi.org/simple/ hecdss
 FROM python:3.13.0-slim
 WORKDIR /app
 COPY --from=builder /app/.venv .venv/

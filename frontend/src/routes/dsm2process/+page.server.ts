@@ -20,7 +20,11 @@ export const actions = {
 				body: api_form_data
 			});
 			const resp_data = await resp.json();
-			return { success: true, message: resp_data };
+			if (resp_data.success) {
+				return { success: true, message: resp_data };
+			} else {
+				return { success: false };
+			}
 		} catch (error) {
 			return { error: 'unable to complete request' };
 		}

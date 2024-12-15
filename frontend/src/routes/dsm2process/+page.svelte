@@ -18,10 +18,10 @@
 	<button type="submit" class="btn btn-accent">Submit</button>
 </form>
 
-<div class="mt-10 text-2xl text-green-500">
-	{#if form?.success}
-		<!-- this message is ephemeral; it exists because the page was rendered in
-	       response to a form submission. it will vanish if the user reloads -->
-		<p>Successfully uploaded new model!</p>
+<div class="mt-10">
+	{#if form && form?.success}
+		<p class="text-2xl text-green-500">Successfully uploaded new model!</p>
+	{:else}
+		<p class="text-2xl text-red-500">Error trying to submit data</p>
 	{/if}
 </div>

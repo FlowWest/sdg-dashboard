@@ -16,9 +16,9 @@ primary_region = 'lax'
     handlers = ["http"]
     port = "80"
 
-  [[services.ports]]
-    handlers = ["tls", "http"]
-    port = "443"
+  # [[services.ports]]
+  #   handlers = ["tls", "http"]
+  #   port = "443"
 
   # [[services.tcp_checks]]
   #   interval = 10000
