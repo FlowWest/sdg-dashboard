@@ -1,6 +1,7 @@
 from hecdss import HecDss
 import pandas as pd
 from dataclasses import dataclass
+from pathlib import Path
 import os
 
 from typing import Dict
@@ -178,4 +179,58 @@ def read_gates_dss(filepath):
     dss = HecDss(filepath)
     part_names = {"B": "gate_op", "F": "scenario"}
     data = get_all_data_from_dsm2_dss(dss, part_names=part_names, concat=True)
+    return data
+
+
+def read_scenario_dir(dir: str):
+    # first need to get a list of all scnarios in this folder
+    scenario_path = Path(dir)
+    output_path = scenario_path / "output"
+    dss_files_in_path = [f for f in output_path.iterdir() if f.suffix == ".dss"]
+    hydro_files = [
+        f
+        for f in output_path.iterdir()
+        if "hydro" in f.name.lower() and f.suffix == ".dss"
+    ]
+
+    sdg_files = [
+        f
+        for f in output_path.iterdir()
+        if "sdg" in f.name.lower() and f.suffix == ".dss"
+    ]
+
+    echo_files_in_path = [
+        f
+        for f in output_path.iterdir()
+        if "echo" in f.name.lower() and f.suffix == ".inp"
+    ]
+
+    if len(hydro_files) != len(sdg_files):
+        raise ValueError(f"the number of hydro files and sdg must be equal")
+
+    matches = list()
+    for f in hydro_files:
+        for s in sdg_files:
+            f_split = f.stem.split("_")
+            s_split = s.stem.split("_")
+            if len(f_split) == len(s_split) and f_split[0] == s_split[0]:
+                matches.append((f, s))
+
+    data = {}
+    try:
+        for match in matches:
+            print(f"the value of the matches: {str(match[0])}")
+            hydro_dss = HecDss(str(match[0]))
+            sdg_dss = HecDss(str(match[1]))
+            data[str(match[0])] = {
+                "hydro": read_hydro_dss(hydro_dss),
+                "sdg": read_gates_dss(sdg_dss),
+            }
+
+    except Exception as e:
+        print(
+            "unable to read dss file, most likely reason is your dss file is version 6"
+        )
+        print(e)
+
     return data
