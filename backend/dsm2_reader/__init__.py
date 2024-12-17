@@ -6,6 +6,8 @@ import os
 
 from typing import Dict
 
+from pandas.core.series import validate_bool_kwarg
+
 
 @dataclass
 class SDGScenario:
@@ -182,27 +184,25 @@ def read_gates_dss(filepath):
     return data
 
 
-def read_scenario_dir(dir: str):
+def read_scenario_dir(dir: str, v7_filter: str | None = None):
     # first need to get a list of all scnarios in this folder
     scenario_path = Path(dir)
     output_path = scenario_path / "output"
-    dss_files_in_path = [f for f in output_path.iterdir() if f.suffix == ".dss"]
+    output_path_files = (
+        list(output_path.iterdir())
+        if v7_filter is None
+        else [f for f in output_path.iterdir() if v7_filter.lower() in f.name.lower()]
+    )
     hydro_files = [
-        f
-        for f in output_path.iterdir()
-        if "hydro" in f.name.lower() and f.suffix == ".dss"
+        f for f in output_path_files if "hydro" in f.name.lower() and f.suffix == ".dss"
     ]
 
     sdg_files = [
-        f
-        for f in output_path.iterdir()
-        if "sdg" in f.name.lower() and f.suffix == ".dss"
+        f for f in output_path_files if "sdg" in f.name.lower() and f.suffix == ".dss"
     ]
 
     echo_files_in_path = [
-        f
-        for f in output_path.iterdir()
-        if "echo" in f.name.lower() and f.suffix == ".inp"
+        f for f in output_path_files if "echo" in f.name.lower() and f.suffix == ".inp"
     ]
 
     if len(hydro_files) != len(sdg_files):
@@ -214,23 +214,18 @@ def read_scenario_dir(dir: str):
             f_split = f.stem.split("_")
             s_split = s.stem.split("_")
             if len(f_split) == len(s_split) and f_split[0] == s_split[0]:
+                print(f"mathing:\t\t{f} <----> {s}")
                 matches.append((f, s))
 
     data = {}
     try:
         for match in matches:
-            print(f"the value of the matches: {str(match[0])}")
-            hydro_dss = HecDss(str(match[0]))
-            sdg_dss = HecDss(str(match[1]))
             data[str(match[0])] = {
-                "hydro": read_hydro_dss(hydro_dss),
-                "sdg": read_gates_dss(sdg_dss),
+                "hydro": read_hydro_dss(str(match[0])),
+                "sdg": read_gates_dss(str(match[1])),
             }
 
     except Exception as e:
-        print(
-            "unable to read dss file, most likely reason is your dss file is version 6"
-        )
         print(e)
 
     return data
