@@ -184,7 +184,55 @@ def read_gates_dss(filepath):
     return data
 
 
-def read_scenario_dir(dir: str, v7_filter: str | None = None):
+def read_scenario_dir(
+    dir: str, v7_filter: str | None = None
+) -> Dict[str, Dict[str, pd.DataFrame]]:
+    """
+    Reads and processes hydrological scenario data from a directory containing DSS files.
+    Matches corresponding hydro and SDG files based on naming patterns and returns their processed data.
+
+    The function expects a specific directory structure where DSS files are stored in an 'output'
+    subdirectory. It matches hydro and SDG files that share the same base name (e.g., 'scenario1_hydro.dss'
+    with 'scenario1_SDG.dss').
+
+    Parameters
+    ----------
+    dir : str
+        Path to the main scenario directory. The function will look for files in a subdirectory
+        named 'output'.
+    v7_filter : str | None, optional
+        If provided, only processes files containing this string (case-insensitive).
+        Useful for filtering specific versions of files. Defaults to None.
+
+    Returns
+    -------
+    dict
+        A dictionary where:
+        - Keys are the paths to hydro DSS files (as strings)
+        - Values are dictionaries containing:
+            - 'hydro': Processed data from the hydro DSS file
+            - 'sdg': Processed data from the corresponding SDG file
+
+    Raises
+    ------
+    ValueError
+        If the number of hydro files doesn't match the number of SDG files in the directory.
+
+    Examples
+    --------
+    >>> # Read all DSS files in the directory
+    >>> data = read_scenario_dir("scenarios/FPV2Ma")
+
+    >>> # Read only version 7 files
+    >>> data = read_scenario_dir("scenarios/FPV2Ma", v7_filter="V7")
+
+    Notes
+    -----
+    - Files must have '.dss' extension for hydro and SDG files
+    - Files must contain 'hydro' or 'sdg' in their names (case-insensitive)
+    - Matching is based on the first part of the filename when split by underscores
+    - The function will also identify '.inp' echo files, though these are not currently processed
+    """
     # first need to get a list of all scnarios in this folder
     scenario_path = Path(dir)
     output_path = scenario_path / "output"
