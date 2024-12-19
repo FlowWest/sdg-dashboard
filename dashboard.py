@@ -116,15 +116,33 @@ if uploaded_file:
     # Create the graphs
     # Vis 1
     # velocity graph
+    # Define a colorblind-friendly palette
+    # Defined using: https://colorbrewer2.org/#type=qualitative&scheme=Paired&n=4
+    color_palette = {
+        "Velocity_Category": {"Over 8ft/s": "#a6cee3", "Under 8ft/s": "#1f78b4"},  # Blues
+        "DGL": {"Closed": "#b2df8a", "Open": "#33a02c"}  # Greens
+    }
     brush = alt.selection_interval(encodings=['x'], mark=alt.BrushConfig(stroke="cyan", strokeOpacity=1))
-    base_vel = alt.Chart(summary_stats_vel, width=800, height=300).mark_bar(color="green").encode(
-            x=alt.X("date:T", title="Date"),
-            y=alt.Y("total_velocity_duration:Q", title="Hours"),
-            color=alt.condition(brush, 'Velocity_Category:N', alt.value('lightgray')),
-            tooltip=["date:T", "Velocity_Category:N", "total_velocity_duration:Q"],
+    base_vel = alt.Chart(summary_stats_vel, width=800, height=300).mark_bar().encode(
+        x=alt.X("date:T", title="Date"),
+        y=alt.Y("total_velocity_duration:Q", title="Hours"),
+        color=alt.condition(
+            brush,
+            alt.Color(
+                'Velocity_Category:N',
+                title="Velocity Category",
+                scale=alt.Scale(
+                    domain=list(color_palette["Velocity_Category"].keys()),
+                    range=list(color_palette["Velocity_Category"].values())
+                )
+            ),
+            alt.value('lightgray')  # Gray for unselected
+        ),
+        tooltip=["date:T", "Velocity_Category:N", "total_velocity_duration:Q"]
     ).properties(
         title="Daily Velocity at Grantline Over/Under 8 ft/s Duration Summary"
     )
+
     upper_vel = base_vel.mark_bar(width=alt.RelativeBandSize(0.7),stroke='grey', strokeWidth=0.5).encode(
         alt.X('date:T', title="Date").scale(domain=brush)
     )
@@ -134,13 +152,22 @@ if uploaded_file:
     vel_bar_chart = upper_vel & lower_vel
     
     #gate graph
-    base_gate = alt.Chart(summary_stats_dgl, width=800, height=300).mark_bar(
-        color="steelblue",
-    ).encode(
-        x=alt.X("date:T", title="Date"), 
+    base_gate = alt.Chart(summary_stats_dgl, width=800, height=300).mark_bar().encode(
+        x=alt.X("date:T", title="Date"),
         y=alt.Y("total_gate_duration:Q", title="Hours"),
-        color=alt.condition(brush, 'DGL:N', alt.value('lightgray')),
-        tooltip=["date:T","DGL:N", "total_gate_duration:Q"]
+        color=alt.condition(
+            brush,
+            alt.Color(
+                'DGL:N',
+                title="Gate Status",
+                scale=alt.Scale(
+                    domain=list(color_palette["DGL"].keys()),
+                    range=list(color_palette["DGL"].values())
+                )
+            ),
+            alt.value('lightgray')  # Gray for unselected
+        ),
+        tooltip=["date:T", "DGL:N", "total_gate_duration:Q"]
     ).properties(
         title="Daily DGL Gate Status Duration Summary"
     )
@@ -153,10 +180,11 @@ if uploaded_file:
     ).add_params(brush)
     
     gate_bar_chart = upper_gate & lower_gate
+
     combined_bar_charts = alt.vconcat(
         gate_bar_chart,
         vel_bar_chart
-        )
+        ).resolve_scale(color='independent')
     
     # Vis 2
 #-----------------------------------------------------------------------------------------------------------------------------------
@@ -251,21 +279,24 @@ if uploaded_file:
     st.table(weekly_summary_df)
     #-------------------------------------------------------------------------------------------------------
     # Create an Altair chart using the filtered data
+    # Define a colorblind-friendly palette
+    color_palette = {
+        "Velocity_Category": {"Over 8ft/s": "#a6cee3", "Under 8ft/s": "#1f78b4"},  # Blues
+        "DGL": {"Closed": "#b2df8a", "Open": "#33a02c"}  # Greens
+    }
     interval = alt.selection_interval(encodings=['x'],
                                       mark=alt.BrushConfig(fill='blue')
                                       )
-    base = alt.Chart(filtered_df).mark_line(color = "darkgreen").encode(
-        x=alt.X('yearmonthdatehoursminutes(datetime):T', title='Datetime', axis=alt.Axis(format='%b %d, %Y', 
-                                                                                         labelAngle=-45,
-                                                                                         title='Date')),
+    base = alt.Chart(filtered_df).mark_line(color=color_palette["Velocity_Category"]["Under 8ft/s"]).encode(
+        x=alt.X(
+            'yearmonthdatehoursminutes(datetime):T', 
+            title='Datetime', 
+            axis=alt.Axis(format='%b %d, %Y', labelAngle=-45, title='Date')
+        ),
         y=alt.Y('GLC:Q', title='Velocity (ft/s)'),
-        # color=alt.when(interval).then(alt.value("darkgreen")).otherwise(alt.value("lightgray"))
-        # color=alt.condition(interval, alt.value("darkgreen"), alt.value("lightgray"))
-    ).add_selection(
-        interval,
-    ).properties(
+    ).add_params(interval).properties(
         title="Fish Passage Velocity and DGL Gate Status Zoomed",
-        height = 300
+        height=300
     )
 
     closed_gates = filtered_df[['gate_min_datetime', 'gate_max_datetime', 'DGL']].drop_duplicates().reset_index(drop=True)
@@ -275,6 +306,7 @@ if uploaded_file:
         x='gate_min_datetime:T',
         x2='gate_max_datetime:T',
         opacity=alt.value(0.2),
+        color=alt.value(color_palette["DGL"]["Closed"]),
         # color=alt.condition(interval, alt.value('orange'), alt.value('lightgray'))
     ).transform_filter(
         alt.datum.DGL == "Closed"
