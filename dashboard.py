@@ -58,10 +58,10 @@ if uploaded_file:
     min_max_summary_title = f"Min max stats of Grantline fish passage from {min_date} to {max_date}."
     velocity_summary_data = {
         "Metric": [
-            f"Daily average of total amount of time velocity was {avg_daily_velocity['Velocity_Category'][0]}",
-            f"Daily average of total amount of time velocity was {avg_daily_velocity['Velocity_Category'][1]}",
-            f"Daily average length of consecutive hours velocity was {overall_daily_average_per_duration_per_velocity['Velocity_Category'][0]}",
-            f"Daily average length of consecutive hours velocity was {overall_daily_average_per_duration_per_velocity['Velocity_Category'][1]}"
+            f"Average Daily Time {avg_daily_velocity['Velocity_Category'][0]}",
+            f"Average Daily Time {avg_daily_velocity['Velocity_Category'][1]}",
+            f"Average Streak Duration {overall_daily_average_per_duration_per_velocity['Velocity_Category'][0]}",
+            f"Average Streak Duration {overall_daily_average_per_duration_per_velocity['Velocity_Category'][1]}"
             ],
         "Hours":[
             f"{avg_daily_velocity['time_unit'][0]:.2f}",
@@ -72,10 +72,10 @@ if uploaded_file:
     
     gate_summary_data = {
         "Metric": [
-            f"Daily average of total amount of time DGL Gate was {avg_daily_gate['DGL'][0]}",
-            f"Daily average of total amount of time of DGL Gate was {avg_daily_gate['DGL'][1]}",
-            f"Daily average length of consecutive hours DGL Gate was {overall_daily_average_per_duration_per_gate['DGL'][0]}",
-            f"Daily average length of consecutive hours DGL Gate was {overall_daily_average_per_duration_per_gate['DGL'][1]}"
+            f"Average Daily {avg_daily_gate['DGL'][0]} Time for DGL gate",
+            f"Average Daily {avg_daily_gate['DGL'][1]} Time for DGL Gate",
+            f"Average {overall_daily_average_per_duration_per_gate['DGL'][0]} Duration Per Streak",
+            f"Average {overall_daily_average_per_duration_per_gate['DGL'][1]} Duration Per Streak"
         ],
         "Hours": [
             f"{avg_daily_gate['time_unit'][0]:.2f}",
@@ -260,10 +260,10 @@ if uploaded_file:
 
     weekly_summary_data = {
         "Metric": [
-            f"Daily average of total amount of time velocity was {weekly_avg_daily_velocity['Velocity_Category'][0]}",
-            f"Daily average of total amount of time velocity was {weekly_avg_daily_velocity['Velocity_Category'][1]}",
-            f"Daily average of total amount of time DGL Gate was {weekly_avg_daily_gate['DGL'][0]}",
-            f"Daily average of total amount of time DGL Gate was {weekly_avg_daily_gate['DGL'][1]}"
+            f"Average Daily Time {weekly_avg_daily_velocity['Velocity_Category'][0]}",
+            f"Average Daily Time {weekly_avg_daily_velocity['Velocity_Category'][1]}",
+            f"Average Daily {weekly_avg_daily_gate['DGL'][0]} Time for DGL Gate",
+            f"Average Daily {weekly_avg_daily_gate['DGL'][1]} Time for DGL Gate"
         ],
         "Hours": [
             f"{weekly_avg_daily_velocity['time_unit'][0]:.2f}",
