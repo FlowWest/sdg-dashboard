@@ -50,9 +50,12 @@ if uploaded_file:
     min_date = min(daily_velocity['date'])
     max_date = max(daily_velocity['date']) 
 
-    velocity_summary_stats_title = f"Velocity summary stats from {min_date} to {max_date}."
-    gate_summary_stats_title = f"Gate summary stats from {min_date} to {max_date}."
+    min_velocity = min(full_merged_df['GLC'])
+    max_velocity = max(full_merged_df['GLC'])
 
+    velocity_summary_stats_title = f"Summary stats of Grantline fish passage from {min_date} to {max_date}."
+    gate_summary_stats_title = f"Summary stats of upstream of gate at DGL from {min_date} to {max_date}."
+    min_max_summary_title = f"Min max stats of Grantline fish passage from {min_date} to {max_date}."
     velocity_summary_data = {
         "Metric": [
             f"Daily average of total amount of time velocity was {avg_daily_velocity['Velocity_Category'][0]}",
@@ -81,9 +84,21 @@ if uploaded_file:
             f"{overall_daily_average_per_duration_per_gate['daily_average_time_per_consecutive_gate'][1]:.2f}"
         ]
     }
+
+    min_max_summary = {
+        "Metric": [
+            f"Minimum velocity through fish passage",
+            f"Maximum velocity through fish passage"
+        ],
+        "Velocity": [
+            f"{min_velocity:.2f} ft/s",
+            f"{max_velocity:.2f} ft/s"
+        ]
+    }
     # Create a DataFrame
     velocity_summary_df = pd.DataFrame(velocity_summary_data)
     gate_summary_df = pd.DataFrame(gate_summary_data)
+    min_max_vel_summary_df = pd.DataFrame(min_max_summary)
     # velocity_text = f"The daily average of velocity over 8ft/s over the entire time period is {avg_daily_velocity['time_unit'][0]:.2f} hours. The daily average of velocity under 8ft/s over the entire time period is {avg_daily_velocity['time_unit'][1]:.2f} hours."
     # dgl_text = f"The daily average of the DGL Gate over the entire time period is {avg_daily_gate['time_unit'][0]:.2f} hours.  The daily average of the DGL Gate closed over the entire period is {avg_daily_gate['time_unit'][1]:.2f} hours."
     
@@ -108,7 +123,7 @@ if uploaded_file:
             color=alt.condition(brush, 'Velocity_Category:N', alt.value('lightgray')),
             tooltip=["date:T", "Velocity_Category:N", "total_velocity_duration:Q"],
     ).properties(
-        title="Daily Velocity Over/Under 8 ft/s Duration Summary"
+        title="Daily Velocity at Grantline Over/Under 8 ft/s Duration Summary"
     )
     upper_vel = base_vel.mark_bar(width=alt.RelativeBandSize(0.7),stroke='grey', strokeWidth=0.5).encode(
         alt.X('date:T', title="Date").scale(domain=brush)
@@ -127,7 +142,7 @@ if uploaded_file:
         color=alt.condition(brush, 'DGL:N', alt.value('lightgray')),
         tooltip=["date:T","DGL:N", "total_gate_duration:Q"]
     ).properties(
-        title="Daily Gate Status Duration Summary"
+        title="Daily DGL Gate Status Duration Summary"
     )
     
     upper_gate = base_gate.mark_bar(width=alt.RelativeBandSize(0.7), stroke='grey', strokeWidth=0.5).encode(
@@ -181,6 +196,9 @@ if uploaded_file:
     st.write(velocity_summary_stats_title)
     st.table(velocity_summary_df)   
     st.write("")
+    st.write(min_max_summary_title)
+    st.table(min_max_vel_summary_df)
+    st.write("")
     st.write(gate_summary_stats_title)
     st.table(gate_summary_df)
     # Altair Visualization
@@ -190,12 +208,19 @@ if uploaded_file:
     st.write('###')
     st.write("### Visualization 2: Flow Velocity and Gate Status Zoomed in By Week")
     drop_down_week = full_merged_df['week'].unique().tolist()
-    selected_week = st.selectbox('Select Week:', drop_down_week)
+    week_to_date_mapping = full_merged_df.groupby("week")["date"].min()
+    week_to_date_dict = week_to_date_mapping.to_dict()
+    drop_down_options = [
+        f"Week {week} (Start Date: {date})"
+        for week, date in week_to_date_mapping.items()
+    ]
+    selected_option = st.selectbox('Select Week:', drop_down_options)
+    selected_week = int(selected_option.split()[1])
     
     # Filter the data manually based on user input
     filtered_df = full_merged_df[full_merged_df['week'] == selected_week]
     #-------------------------------------------------------------------------------------------------------
-    weekly_summary_stats_title = f"Daily summary stats from week {selected_week} ."
+    weekly_summary_stats_title = f"Daily summary stats from week {selected_option} ."
     weekly_daily_velocity = filtered_df.groupby(["date", "Velocity_Category"])["time_unit"].sum().reset_index()
     weekly_avg_daily_velocity = weekly_daily_velocity.groupby("Velocity_Category")['time_unit'].mean().reset_index()
     
@@ -239,7 +264,7 @@ if uploaded_file:
     ).add_selection(
         interval,
     ).properties(
-        title="Flow Velocity and Gate Status Zoomed",
+        title="Fish Passage Velocity and DGL Gate Status Zoomed",
         height = 300
     )
 
@@ -365,7 +390,7 @@ if uploaded_file:
     ).add_params(
         interval
     ).properties(
-        title="Weekly Summary of Minimum Stage At DGL"
+        title="Weekly Summary of Stage, upstream of gates @ DGL"
     )
     yrule_wl = alt.Chart(filtered_df).mark_rule(color = "purple", strokeDash=[12, 6], size=1.5).encode(
             y=alt.datum(2.3)
