@@ -4,13 +4,19 @@ import type { Actions } from './$types';
 export const actions = {
 	process_dss: async ({ request }) => {
 		const form_data = await request.formData();
-		const file = form_data.get('dssfile') as File;
-
-		if (!file) {
-			return { error: 'file processing failed' };
+		const file = form_data.get('dssfile');
+		console.log({
+			typeofFile: typeof file,
+			isFile: file instanceof File,
+			constructor: file?.constructor?.name,
+			fileProps: Object.getOwnPropertyNames(file),
+			// If it's a string, what's the content?
+			stringContent: typeof file === 'string' ? file : 'not a string'
+		});
+		if (!file || !(file instanceof File)) {
+			return { success: false, error: 'Invalid file upload' };
 		}
 
-		console.log('file received, sending post request to backend now');
 		const api_form_data = new FormData();
 		api_form_data.append('file', file);
 
@@ -21,7 +27,7 @@ export const actions = {
 			});
 			const resp_data = await resp.json();
 			if (resp_data.success) {
-				return { success: true, message: resp_data };
+				return { success: true, message: resp_data.message };
 			} else {
 				return { success: false };
 			}
