@@ -50,15 +50,18 @@ if uploaded_file:
     min_date = min(daily_velocity['date'])
     max_date = max(daily_velocity['date']) 
 
-    velocity_summary_stats_title = f"Velocity summary stats from {min_date} to {max_date}."
-    gate_summary_stats_title = f"Gate summary stats from {min_date} to {max_date}."
+    min_velocity = min(full_merged_df['GLC'])
+    max_velocity = max(full_merged_df['GLC'])
 
+    velocity_summary_stats_title = f"Summary stats of Grantline fish passage from {min_date} to {max_date}."
+    gate_summary_stats_title = f"Summary stats of upstream of gate at DGL from {min_date} to {max_date}."
+    min_max_summary_title = f"Min max stats of Grantline fish passage from {min_date} to {max_date}."
     velocity_summary_data = {
         "Metric": [
-            f"Daily average of total amount of time velocity was {avg_daily_velocity['Velocity_Category'][0]}",
-            f"Daily average of total amount of time velocity was {avg_daily_velocity['Velocity_Category'][1]}",
-            f"Daily average length of consecutive hours velocity was {overall_daily_average_per_duration_per_velocity['Velocity_Category'][0]}",
-            f"Daily average length of consecutive hours velocity was {overall_daily_average_per_duration_per_velocity['Velocity_Category'][1]}"
+            f"Average Daily Time {avg_daily_velocity['Velocity_Category'][0]}",
+            f"Average Daily Time {avg_daily_velocity['Velocity_Category'][1]}",
+            f"Average Streak Duration {overall_daily_average_per_duration_per_velocity['Velocity_Category'][0]}",
+            f"Average Streak Duration {overall_daily_average_per_duration_per_velocity['Velocity_Category'][1]}"
             ],
         "Hours":[
             f"{avg_daily_velocity['time_unit'][0]:.2f}",
@@ -69,10 +72,10 @@ if uploaded_file:
     
     gate_summary_data = {
         "Metric": [
-            f"Daily average of total amount of time DGL Gate was {avg_daily_gate['DGL'][0]}",
-            f"Daily average of total amount of time of DGL Gate was {avg_daily_gate['DGL'][1]}",
-            f"Daily average length of consecutive hours DGL Gate was {overall_daily_average_per_duration_per_gate['DGL'][0]}",
-            f"Daily average length of consecutive hours DGL Gate was {overall_daily_average_per_duration_per_gate['DGL'][1]}"
+            f"Average Daily {avg_daily_gate['DGL'][0]} Time for DGL gate",
+            f"Average Daily {avg_daily_gate['DGL'][1]} Time for DGL Gate",
+            f"Average {overall_daily_average_per_duration_per_gate['DGL'][0]} Duration Per Streak",
+            f"Average {overall_daily_average_per_duration_per_gate['DGL'][1]} Duration Per Streak"
         ],
         "Hours": [
             f"{avg_daily_gate['time_unit'][0]:.2f}",
@@ -81,9 +84,21 @@ if uploaded_file:
             f"{overall_daily_average_per_duration_per_gate['daily_average_time_per_consecutive_gate'][1]:.2f}"
         ]
     }
+
+    min_max_summary = {
+        "Metric": [
+            f"Minimum velocity through fish passage",
+            f"Maximum velocity through fish passage"
+        ],
+        "Velocity": [
+            f"{min_velocity:.2f} ft/s",
+            f"{max_velocity:.2f} ft/s"
+        ]
+    }
     # Create a DataFrame
     velocity_summary_df = pd.DataFrame(velocity_summary_data)
     gate_summary_df = pd.DataFrame(gate_summary_data)
+    min_max_vel_summary_df = pd.DataFrame(min_max_summary)
     # velocity_text = f"The daily average of velocity over 8ft/s over the entire time period is {avg_daily_velocity['time_unit'][0]:.2f} hours. The daily average of velocity under 8ft/s over the entire time period is {avg_daily_velocity['time_unit'][1]:.2f} hours."
     # dgl_text = f"The daily average of the DGL Gate over the entire time period is {avg_daily_gate['time_unit'][0]:.2f} hours.  The daily average of the DGL Gate closed over the entire period is {avg_daily_gate['time_unit'][1]:.2f} hours."
     
@@ -101,15 +116,33 @@ if uploaded_file:
     # Create the graphs
     # Vis 1
     # velocity graph
+    # Define a colorblind-friendly palette
+    # Defined using: https://colorbrewer2.org/#type=qualitative&scheme=Paired&n=4
+    color_palette = {
+        "Velocity_Category": {"Over 8ft/s": "#a6cee3", "Under 8ft/s": "#1f78b4"},  # Blues
+        "DGL": {"Closed": "#b2df8a", "Open": "#33a02c"}  # Greens
+    }
     brush = alt.selection_interval(encodings=['x'], mark=alt.BrushConfig(stroke="cyan", strokeOpacity=1))
-    base_vel = alt.Chart(summary_stats_vel, width=800, height=300).mark_bar(color="green").encode(
-            x=alt.X("date:T", title="Date"),
-            y=alt.Y("total_velocity_duration:Q", title="Hours"),
-            color=alt.condition(brush, 'Velocity_Category:N', alt.value('lightgray')),
-            tooltip=["date:T", "Velocity_Category:N", "total_velocity_duration:Q"],
+    base_vel = alt.Chart(summary_stats_vel, width=800, height=300).mark_bar().encode(
+        x=alt.X("date:T", title="Date"),
+        y=alt.Y("total_velocity_duration:Q", title="Hours"),
+        color=alt.condition(
+            brush,
+            alt.Color(
+                'Velocity_Category:N',
+                title="Velocity Category",
+                scale=alt.Scale(
+                    domain=list(color_palette["Velocity_Category"].keys()),
+                    range=list(color_palette["Velocity_Category"].values())
+                )
+            ),
+            alt.value('lightgray')  # Gray for unselected
+        ),
+        tooltip=["date:T", "Velocity_Category:N", "total_velocity_duration:Q"]
     ).properties(
-        title="Daily Velocity Over/Under 8 ft/s Duration Summary"
+        title="Daily Velocity at Grantline Over/Under 8 ft/s Duration Summary"
     )
+
     upper_vel = base_vel.mark_bar(width=alt.RelativeBandSize(0.7),stroke='grey', strokeWidth=0.5).encode(
         alt.X('date:T', title="Date").scale(domain=brush)
     )
@@ -119,15 +152,24 @@ if uploaded_file:
     vel_bar_chart = upper_vel & lower_vel
     
     #gate graph
-    base_gate = alt.Chart(summary_stats_dgl, width=800, height=300).mark_bar(
-        color="steelblue",
-    ).encode(
-        x=alt.X("date:T", title="Date"), 
+    base_gate = alt.Chart(summary_stats_dgl, width=800, height=300).mark_bar().encode(
+        x=alt.X("date:T", title="Date"),
         y=alt.Y("total_gate_duration:Q", title="Hours"),
-        color=alt.condition(brush, 'DGL:N', alt.value('lightgray')),
-        tooltip=["date:T","DGL:N", "total_gate_duration:Q"]
+        color=alt.condition(
+            brush,
+            alt.Color(
+                'DGL:N',
+                title="Gate Status",
+                scale=alt.Scale(
+                    domain=list(color_palette["DGL"].keys()),
+                    range=list(color_palette["DGL"].values())
+                )
+            ),
+            alt.value('lightgray')  # Gray for unselected
+        ),
+        tooltip=["date:T", "DGL:N", "total_gate_duration:Q"]
     ).properties(
-        title="Daily Gate Status Duration Summary"
+        title="Daily DGL Gate Status Duration Summary"
     )
     
     upper_gate = base_gate.mark_bar(width=alt.RelativeBandSize(0.7), stroke='grey', strokeWidth=0.5).encode(
@@ -138,10 +180,11 @@ if uploaded_file:
     ).add_params(brush)
     
     gate_bar_chart = upper_gate & lower_gate
+
     combined_bar_charts = alt.vconcat(
         gate_bar_chart,
         vel_bar_chart
-        )
+        ).resolve_scale(color='independent')
     
     # Vis 2
 #-----------------------------------------------------------------------------------------------------------------------------------
@@ -181,6 +224,9 @@ if uploaded_file:
     st.write(velocity_summary_stats_title)
     st.table(velocity_summary_df)   
     st.write("")
+    st.write(min_max_summary_title)
+    st.table(min_max_vel_summary_df)
+    st.write("")
     st.write(gate_summary_stats_title)
     st.table(gate_summary_df)
     # Altair Visualization
@@ -190,12 +236,19 @@ if uploaded_file:
     st.write('###')
     st.write("### Visualization 2: Flow Velocity and Gate Status Zoomed in By Week")
     drop_down_week = full_merged_df['week'].unique().tolist()
-    selected_week = st.selectbox('Select Week:', drop_down_week)
+    week_to_date_mapping = full_merged_df.groupby("week")["date"].min()
+    week_to_date_dict = week_to_date_mapping.to_dict()
+    drop_down_options = [
+        f"Week {week} (Start Date: {date})"
+        for week, date in week_to_date_mapping.items()
+    ]
+    selected_option = st.selectbox('Select Week:', drop_down_options)
+    selected_week = int(selected_option.split()[1])
     
     # Filter the data manually based on user input
     filtered_df = full_merged_df[full_merged_df['week'] == selected_week]
     #-------------------------------------------------------------------------------------------------------
-    weekly_summary_stats_title = f"Daily summary stats from week {selected_week} ."
+    weekly_summary_stats_title = f"Daily summary stats from week {selected_option} ."
     weekly_daily_velocity = filtered_df.groupby(["date", "Velocity_Category"])["time_unit"].sum().reset_index()
     weekly_avg_daily_velocity = weekly_daily_velocity.groupby("Velocity_Category")['time_unit'].mean().reset_index()
     
@@ -207,10 +260,10 @@ if uploaded_file:
 
     weekly_summary_data = {
         "Metric": [
-            f"Daily average of total amount of time velocity was {weekly_avg_daily_velocity['Velocity_Category'][0]}",
-            f"Daily average of total amount of time velocity was {weekly_avg_daily_velocity['Velocity_Category'][1]}",
-            f"Daily average of total amount of time DGL Gate was {weekly_avg_daily_gate['DGL'][0]}",
-            f"Daily average of total amount of time DGL Gate was {weekly_avg_daily_gate['DGL'][1]}"
+            f"Average Daily Time {weekly_avg_daily_velocity['Velocity_Category'][0]}",
+            f"Average Daily Time {weekly_avg_daily_velocity['Velocity_Category'][1]}",
+            f"Average Daily {weekly_avg_daily_gate['DGL'][0]} Time for DGL Gate",
+            f"Average Daily {weekly_avg_daily_gate['DGL'][1]} Time for DGL Gate"
         ],
         "Hours": [
             f"{weekly_avg_daily_velocity['time_unit'][0]:.2f}",
@@ -226,21 +279,24 @@ if uploaded_file:
     st.table(weekly_summary_df)
     #-------------------------------------------------------------------------------------------------------
     # Create an Altair chart using the filtered data
+    # Define a colorblind-friendly palette
+    color_palette = {
+        "Velocity_Category": {"Over 8ft/s": "#a6cee3", "Under 8ft/s": "#1f78b4"},  # Blues
+        "DGL": {"Closed": "#b2df8a", "Open": "#33a02c"}  # Greens
+    }
     interval = alt.selection_interval(encodings=['x'],
                                       mark=alt.BrushConfig(fill='blue')
                                       )
-    base = alt.Chart(filtered_df).mark_line(color = "darkgreen").encode(
-        x=alt.X('yearmonthdatehoursminutes(datetime):T', title='Datetime', axis=alt.Axis(format='%b %d, %Y', 
-                                                                                         labelAngle=-45,
-                                                                                         title='Date')),
+    base = alt.Chart(filtered_df).mark_line(color=color_palette["Velocity_Category"]["Under 8ft/s"]).encode(
+        x=alt.X(
+            'yearmonthdatehoursminutes(datetime):T', 
+            title='Datetime', 
+            axis=alt.Axis(format='%b %d, %Y', labelAngle=-45, title='Date')
+        ),
         y=alt.Y('GLC:Q', title='Velocity (ft/s)'),
-        # color=alt.when(interval).then(alt.value("darkgreen")).otherwise(alt.value("lightgray"))
-        # color=alt.condition(interval, alt.value("darkgreen"), alt.value("lightgray"))
-    ).add_selection(
-        interval,
-    ).properties(
-        title="Flow Velocity and Gate Status Zoomed",
-        height = 300
+    ).add_params(interval).properties(
+        title="Fish Passage Velocity and DGL Gate Status Zoomed",
+        height=300
     )
 
     closed_gates = filtered_df[['gate_min_datetime', 'gate_max_datetime', 'DGL']].drop_duplicates().reset_index(drop=True)
@@ -250,6 +306,7 @@ if uploaded_file:
         x='gate_min_datetime:T',
         x2='gate_max_datetime:T',
         opacity=alt.value(0.2),
+        color=alt.value(color_palette["DGL"]["Closed"]),
         # color=alt.condition(interval, alt.value('orange'), alt.value('lightgray'))
     ).transform_filter(
         alt.datum.DGL == "Closed"
@@ -365,7 +422,7 @@ if uploaded_file:
     ).add_params(
         interval
     ).properties(
-        title="Weekly Summary of Minimum Stage At DGL"
+        title="Weekly Summary of Stage, upstream of gates @ DGL"
     )
     yrule_wl = alt.Chart(filtered_df).mark_rule(color = "purple", strokeDash=[12, 6], size=1.5).encode(
             y=alt.datum(2.3)
