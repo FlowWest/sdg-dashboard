@@ -4,6 +4,7 @@ import pandas as pd
 from data_config import gatef, elev_list, flow_list, stn_name, stn_list
 import numpy as np
 from typing import Union, Optional, List, Dict
+import os
 
 def calc_vel(flow: float|Series, stage_up: float|Series, bottom_elev: float, width: float) -> float|Series:
     """
@@ -70,7 +71,26 @@ def set_datetime_index(data: DataFrame) -> Series:
     data = data['value']
     return(data)
 
-def prepare_full_data(sdg_flow: DataFrame, sdg_stage: DataFrame, sdg_gateop: DataFrame, hydro_wl: DataFrame, gatef: Dict) -> Dict:
+def parse_dss_filename(file_path: str) -> str:
+    """
+    Extract the last value from a DSS file path, excluding the extension.
+
+    Parameters:
+    - file_path (str): Full path to the DSS file.
+
+    Returns:
+    - str: The model name extracted from DSS file.
+    """
+    file_name = os.path.splitext(os.path.basename(file_path))[0]
+    model_name = file_name.split('_')[0]
+    return model_name
+
+def prepare_full_data(sdg_flow: DataFrame, 
+                      sdg_stage: DataFrame, 
+                      sdg_gateop: DataFrame, 
+                      hydro_wl: DataFrame, 
+                      gatef: Dict, 
+                      model: str) -> Dict:
     """
     Prepare gate data dictionary from input datasets.
     
@@ -80,6 +100,7 @@ def prepare_full_data(sdg_flow: DataFrame, sdg_stage: DataFrame, sdg_gateop: Dat
     - sdg_gatop: DataFrame with gate operation data.
     - hydro_wl: Dataframe with water level data.
     - gatef: Dictionary containing data configuration.
+    - model: model name
 
     Returns:
     - Dictionary containing gate-specific data.
@@ -98,8 +119,8 @@ def prepare_full_data(sdg_flow: DataFrame, sdg_stage: DataFrame, sdg_gateop: Dat
             'flow_data': flow_data, #sc2_flow
             'gate_data': gate_data, #sc2_gate
             'gate_operation_data': gateop_data, #sc2_gateop
-            "water_level_data": hydro_wl_data #sc2_wl
-            
+            "water_level_data": hydro_wl_data, #sc2_wl
+            "model": model
         }
     return full_data
 
@@ -131,6 +152,7 @@ def generate_full_model_data(data: Dict,
     """
     sdg = data[path]['sdg']
     hydro = data[path]['hydro']
+    model = parse_dss_filename(path)
 
     sdg_stage = filter_data(sdg, 'gate_op', elev_list, start_date, end_date)
     sdg_flow = filter_data(sdg, 'gate_op', flow_list, start_date, end_date)
@@ -141,7 +163,7 @@ def generate_full_model_data(data: Dict,
     hydro_wl = hydro[hydro['parameter']=="STAGE"]
     hydro_wl = filter_data(hydro_wl, 'gate', stn_name, start_date, end_date)
 
-    full_data = prepare_full_data(sdg_flow, sdg_stage, sdg_gateop, hydro_wl, gatef)
+    full_data = prepare_full_data(sdg_flow, sdg_stage, sdg_gateop, hydro_wl, gatef, model)
     
     sdg_flow_GLC_FLOW_FISH = set_datetime_index(full_data['GLC']['flow_data'])
     sdg_flow_GLC_GATE_UP = set_datetime_index(full_data['GLC']['gate_data'])
@@ -217,7 +239,6 @@ def post_process_velocity(model_data: Dict, gate: str) -> DataFrame:
     vel_zoom_df['date'] = vel_zoom_df['datetime'].dt.date.astype(str)
     consecutive_streaks_vel = vel_zoom_df.groupby(['consecutive_groups', 'Velocity_Category', 'min_datetime', 'max_datetime']).size().reset_index(name='count')
     consecutive_streaks_vel['streak_duration'] = consecutive_streaks_vel['count'] * 15 / 60
-
     consecutive_streaks_vel_clean = consecutive_streaks_vel.drop(['consecutive_groups', 'Velocity_Category', 'max_datetime'], axis=1)
     merged_vel_df = pd.merge(vel_zoom_df, consecutive_streaks_vel_clean,left_on="min_datetime", right_on="min_datetime")
 
@@ -238,9 +259,87 @@ def post_process_full_data(model_data: Dict, gate: str) -> DataFrame:
     merged_vel_df = post_process_velocity(model_data, gate)
     full_merged_df = pd.merge(merged_vel_df, merged_gate_df, left_on="datetime", right_on="datetime")
     full_merged_df['time_unit'] = 0.25
+    full_merged_df['gate_status'] = np.where(full_merged_df['gate_status'], "Closed", "Open")
+    full_merged_df['week'] = full_merged_df['datetime'].dt.isocalendar().week
+    full_merged_df['gate'] = gate
+    full_merged_df['model'] = model_data[gate]["model"]
     
     return full_merged_df
 
+def calc_avg_daily_vel(post_processed_data: DataFrame) -> DataFrame:
+    """
+    Calculate daily average of total amount of time velocity is above and below 8ft/s.
+
+    Parameters:
+    - post_processed_data (DataFrame): post processed dataframe.
+
+    Returns:
+    - DataFrame
+    """
+    daily_velocity = post_processed_data.groupby(["date", "Velocity_Category"])["time_unit"].sum().reset_index()
+    avg_daily_velocity = pd.DataFrame(daily_velocity.groupby("Velocity_Category")['time_unit'].sum()/daily_velocity["date"].nunique()).reset_index()
+    
+    return avg_daily_velocity
+
+def calc_avg_daily_gate(post_processed_data: DataFrame) -> DataFrame:
+    """
+    Calculate daily average of total amount of time gate is open and closed.
+
+    Parameters:
+    - post_processed_data (DataFrame): post processed dataframe.
+
+    Returns:
+    - DataFrame
+    """
+        
+    daily_gate = post_processed_data.groupby(["date","gate_status"])["time_unit"].sum().reset_index()
+    avg_daily_gate = pd.DataFrame(daily_gate.groupby("gate_status")['time_unit'].sum()/daily_gate["date"].nunique()).reset_index()
+
+    return avg_daily_gate
+
+def calc_avg_len_consec_vel(post_processed_data: DataFrame) -> DataFrame:
+    """
+    Calculate daily average of length of consecutive hours velocity is above and below 8ft/s.
+
+    Parameters:
+    - post_processed_data (DataFrame): post processed dataframe.
+
+    Returns:
+    - DataFrame
+    """
+    daily_velocity_stats = post_processed_data.groupby(["date", "Velocity_Category"]).agg(
+        unique_consecutive_groups=("consecutive_groups", "nunique"),
+        total_time=("time_unit", "sum")
+    ).reset_index()
+
+    daily_velocity_stats["daily_average_time_per_consecutive_group"] = (
+        daily_velocity_stats["total_time"] / daily_velocity_stats["unique_consecutive_groups"]
+    )
+    daily_average_per_duration_per_velocity_over_period = daily_velocity_stats.groupby(["Velocity_Category"])['daily_average_time_per_consecutive_group'].mean().reset_index()
+    
+    return daily_average_per_duration_per_velocity_over_period
+
+def calc_avg_len_consec_gate(post_processed_data: DataFrame) -> DataFrame:
+    """
+    Calculate daily average of length of consecutive hours gate is open or closed.
+
+    Parameters:
+    - post_processed_data (DataFrame): post processed dataframe.
+
+    Returns:
+    - DataFrame
+    """    
+    daily_gate_stats = post_processed_data.groupby(["date", "gate_status"]).agg(
+        unique_gate_count=("gate_count", "nunique"),
+        total_time=("time_unit", "sum")
+    ).reset_index()
+
+    daily_gate_stats["daily_average_time_per_consecutive_gate"] = (
+        daily_gate_stats["total_time"] / daily_gate_stats["unique_gate_count"]
+    )
+    daily_average_per_duration_per_gate_over_period = daily_gate_stats.groupby(["gate_status"])['daily_average_time_per_consecutive_gate'].mean().reset_index()
+    
+    return daily_average_per_duration_per_gate_over_period
 #----------------------------------------------------------------------------------------------------
 data = read_scenario_dir("C:/Users/Inigo/Projects/sdg-dashboard/data", v7_filter="_7")
 start_zoom = '2016-05-01'
