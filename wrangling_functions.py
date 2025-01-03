@@ -1,16 +1,40 @@
 from backend.dsm2_reader import read_scenario_dir
+from pandas import DataFrame, Series
 import pandas as pd
 from data_config import gatef, elev_list, flow_list, stn_name, stn_list
 import numpy as np
+from typing import Union, Optional, List, Dict
 
-def calc_vel(flow,stage_up, bottom_elev, width):
-    #velocity is flow/cross-section
+def calc_vel(flow: float|Series, stage_up: float|Series, bottom_elev: float, width: float) -> float|Series:
+    """
+    Calculate velocity based on flow and cross-sectional area.
+
+    Parameters:
+    - flow (float or Series): Flow rate in cubic feet per second (cfs).
+    - stage_up (float or Series): Upstream stage height in feet.
+    - bottom_elev (float): Bottom elevation in feet.
+    - width (float): Channel width in feet.
+
+    Returns:
+    - float or Series: Velocity in feet per second.
+    """
     xs = (stage_up-bottom_elev)*width
     vel = flow/xs
     return vel
 
-def filter_data(data, column, values, start_date=None, end_date=None):
-    """Filter data based on a column and a list of values."""
+def filter_data(data: DataFrame, column: str, values: List, start_date: Optional[str] = None, end_date: Optional[str] = None):
+    """
+    Filter data based on a column and a list of values.
+    Parameters:
+    - data (DataFrame): Input data.
+    - column (str): Column to filter on.
+    - values (list): List of values to match.
+    - start_date (str or None): Start date in YYYY-MM-DD format.
+    - end_date (str or None): End date in YYYY-MM-DD format.
+
+    Returns:
+    - DataFrame: Filtered data.
+    """
     if start_date:
         data = data[data[column].isin(values)].dropna()
         data = data[(data['datetime'] >= start_date) & (data['datetime'] <= end_date)]
@@ -18,19 +42,35 @@ def filter_data(data, column, values, start_date=None, end_date=None):
         data = data[data[column].isin(values)].dropna()
     return data
 
-def rename_gates(data, column, rename_map):
-    """Rename values in a column in the DataFrame."""
+def rename_gates(data: DataFrame, column: str, rename_map: Dict) -> DataFrame:
+    """
+    Rename values in a column in the DataFrame.
+    Parameters:
+    - data (DataFrame): Input data.
+    - column (str): Column to rename values in.
+    - rename_map (dict): Mapping of old values to new values.
+
+    Returns:
+    - DataFrame: Data with renamed column values.
+    """
     data[column] = data[column].replace(rename_map)
     return data
 
-def set_datetime_index(data):
+def set_datetime_index(data: DataFrame) -> Series:
+    """
+    Set the datetime column as the index and return the 'value' column.
+
+    Parameters:
+    - data (DataFrame): Input data.
+
+    Returns:
+    - Series: 'value' column with datetime index.
+    """
     data.set_index('datetime', inplace=True)
     data = data['value']
     return(data)
 
-
-
-def prepare_full_data(sdg_flow, sdg_stage, sdg_gateop, hydro_wl, gatef):
+def prepare_full_data(sdg_flow: DataFrame, sdg_stage: DataFrame, sdg_gateop: DataFrame, hydro_wl: DataFrame, gatef: Dict) -> Dict:
     """
     Prepare gate data dictionary from input datasets.
     
@@ -39,10 +79,10 @@ def prepare_full_data(sdg_flow, sdg_stage, sdg_gateop, hydro_wl, gatef):
     - sdg_stage: DataFrame with stage data.
     - sdg_gatop: DataFrame with gate operation data.
     - hydro_wl: Dataframe with water level data.
-    - gatef: DataFrame containing gate configuration.
+    - gatef: Dictionary containing data configuration.
 
     Returns:
-    - Dictionary containing gate data.
+    - Dictionary containing gate-specific data.
     """
     full_data = {}
     for i, gate_name in enumerate(gatef['name']):
@@ -63,7 +103,32 @@ def prepare_full_data(sdg_flow, sdg_stage, sdg_gateop, hydro_wl, gatef):
         }
     return full_data
 
-def generate_full_model_data(data, path, gatef, elev_list, flow_list, stn_name, stn_list, start_date=None, end_date=None):
+def generate_full_model_data(data: Dict, 
+                             path: str, 
+                             gatef: Dict, 
+                             elev_list: List, 
+                             flow_list: List, 
+                             stn_name: List, 
+                             stn_list: List, 
+                             start_date: Optional[str] = None, 
+                             end_date: Optional[str] = None) -> Dict:
+    """
+    Generate model data for gates based on input data and configurations.
+
+    Parameters:
+    - data (dict): Dictionary containing datasets.
+    - path (str): Key to access the datasets in the dictionary.
+    - gatef (Dictionary): Gate configuration data found in data_config.py.
+    - elev_list (list): List of elevation values.
+    - flow_list (list): List of flow values.
+    - stn_name (list): Station names.
+    - stn_list (list): Station IDs.
+    - start_date (str or None): Start date in YYYY-MM-DD format.
+    - end_date (str or None): End date in YYYY-MM-DD format.
+
+    Returns:
+    - dict: Dictionary containing processed model data.
+    """
     sdg = data[path]['sdg']
     hydro = data[path]['hydro']
 
@@ -105,7 +170,17 @@ def generate_full_model_data(data, path, gatef, elev_list, flow_list, stn_name, 
     
     return full_data
 
-def post_process_gateop(model_data, gate):
+def post_process_gateop(model_data: Dict, gate: str) -> DataFrame:
+    """
+    Post-process gate operation data to identify consecutive groups and streaks.
+
+    Parameters:
+    - model_data (dict): Model data dictionary.
+    - gate (str): Gate identifier.
+
+    Returns:
+    - DataFrame: Processed gate operation data.
+    """
     gate_up_df = model_data[gate]['gate_operation_data'][["datetime", "value"]]
     gate_up_df["gate_status"] = gate_up_df['value']>=10
     gate_up_df['consecutive_groups'] = (gate_up_df['value'] != gate_up_df['value'].shift()).cumsum()
@@ -114,7 +189,6 @@ def post_process_gateop(model_data, gate):
     consecutive_streaks = gate_up_df.groupby(['consecutive_groups', 'value', 'min_datetime', 'max_datetime']).size().reset_index(name='count')
     consecutive_streaks['streak_duration'] = consecutive_streaks['count'] * 15 / 60
     consecutive_streaks_clean = consecutive_streaks.drop(['value', 'consecutive_groups', 'max_datetime'], axis = 1)
-    # print(consecutive_streaks_clean.head())
     merged_gate_df = pd.merge(gate_up_df, consecutive_streaks_clean,left_on="min_datetime", right_on="min_datetime")
     merged_gate_df = merged_gate_df.drop(['consecutive_groups', 'value'], axis=1)
     merged_gate_df = merged_gate_df.rename(columns={"min_datetime": "gate_min_datetime", 
@@ -123,7 +197,17 @@ def post_process_gateop(model_data, gate):
                                                 "streak_duration": "gate_streak_duration"})
     return merged_gate_df
 
-def post_process_velocity(model_data, gate):
+def post_process_velocity(model_data: Dict, gate: str) -> DataFrame:
+    """
+    Post-process velocity data to categorize and identify consecutive streaks.
+
+    Parameters:
+    - model_data (dict): Model data dictionary.
+    - gate (str): Gate identifier.
+
+    Returns:
+    - DataFrame: Processed velocity data.
+    """
     vel_zoom_df =model_data[gate]["vel"]
     vel_zoom_df['Velocity_Category'] = np.where(vel_zoom_df['value'] >= 8, "Over 8ft/s", "Under 8ft/s")
     #.shift shift value down and compare each value with the previous row; increase value when rows are different
@@ -139,7 +223,17 @@ def post_process_velocity(model_data, gate):
 
     return merged_vel_df
 
-def post_process_full_data(model_data, gate):
+def post_process_full_data(model_data: Dict, gate: str) -> DataFrame:
+    """
+    Combine processed gate operation and velocity data into a single DataFrame.
+
+    Parameters:
+    - model_data (dict): Model data dictionary.
+    - gate (str): Gate identifier.
+
+    Returns:
+    - DataFrame: Combined processed data.
+    """
     merged_gate_df = post_process_gateop(model_data, gate)
     merged_vel_df = post_process_velocity(model_data, gate)
     full_merged_df = pd.merge(merged_vel_df, merged_gate_df, left_on="datetime", right_on="datetime")
@@ -163,14 +257,14 @@ fpv1ma_hydro_full_data = generate_full_model_data(data,
                  )
 
 fpv2ma_hydro_full_data = generate_full_model_data(data,
-                              'C:\\Users\\Inigo\\Projects\\sdg-dashboard\\data\\output\\FPV2Ma_hydro_7.dss',
-                              gatef,
-                              elev_list,
-                              flow_list,
-                              stn_name,
-                              stn_list,
-                              start_zoom,
-                            end_zoom)
+                'C:\\Users\\Inigo\\Projects\\sdg-dashboard\\data\\output\\FPV2Ma_hydro_7.dss',
+                gatef,
+                elev_list,
+                flow_list,
+                stn_name,
+                stn_list,
+                start_zoom,
+                end_zoom)
 
 full_data = post_process_full_data(fpv2ma_hydro_full_data, "GLC")
 print(full_data.head())
