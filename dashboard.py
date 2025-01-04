@@ -6,10 +6,9 @@ import altair as alt
 #TODO: add elevation graph based on week
 
 # Title and description
-# st.set_page_config(layout="wide")
+st.set_page_config(layout="wide")
 st.title("Exploratory Data Visualizations for SDG Analysis")
 st.write("Upload your data and explore interactive visualizations.")
-
 # File uploader
 uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
 
@@ -186,6 +185,7 @@ if uploaded_file:
         vel_bar_chart
         ).resolve_scale(color='independent')
     
+    combined_chart = alt.hconcat(combined_bar_charts, combined_bar_charts, combined_bar_charts)
     # Vis 2
 #-----------------------------------------------------------------------------------------------------------------------------------
     df = full_merged_df.rename(
@@ -232,7 +232,14 @@ if uploaded_file:
     # Altair Visualization
     st.write('#')
     st.write("### Visualization 1: Daily Gate Status Duration vs Daily Velocity Flow Duration")
-    st.altair_chart(combined_bar_charts, use_container_width=True, theme=None)
+    # st.altair_chart(combined_chart, use_container_width=True, theme=None)
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.altair_chart(combined_bar_charts, use_container_width=True, theme=None)
+    with col2:
+        st.altair_chart(combined_bar_charts, use_container_width=True, theme=None)
+    with col3:
+        st.altair_chart(combined_bar_charts, use_container_width=True, theme=None)
     st.write('###')
     st.write("### Visualization 2: Flow Velocity and Gate Status Zoomed in By Week")
     drop_down_week = full_merged_df['week'].unique().tolist()
@@ -528,6 +535,7 @@ if uploaded_file:
     #     combined_chart
     # )
     # Display the chart in Streamlit
+    
     # st.altair_chart(daily_velocity, use_container_width=False)
     st.altair_chart(combined_chart, use_container_width=False, theme=None)
     st.altair_chart(combined_elev_chart, use_container_width=False, theme=None)
