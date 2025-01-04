@@ -185,7 +185,7 @@ if uploaded_file:
         vel_bar_chart
         ).resolve_scale(color='independent')
     
-    combined_chart = alt.hconcat(combined_bar_charts, combined_bar_charts, combined_bar_charts)
+    # combined_chart = alt.hconcat(combined_bar_charts, combined_bar_charts, combined_bar_charts)
     # Vis 2
 #-----------------------------------------------------------------------------------------------------------------------------------
     df = full_merged_df.rename(
