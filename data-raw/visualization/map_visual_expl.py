@@ -6,9 +6,13 @@ import folium
 from IPython.display import display
 import pandas as pd
 
+import os
+print(os.getcwd())
+
+
 shapefile_paths = [
-    "data-raw/MSS_nodes/dsm2_nodes_newcs_extranodes.shp",
-    "data-raw/fc2024.01_chan/FC2024.01_channels_centerlines.shp"
+    "../MSS_nodes/dsm2_nodes_newcs_extranodes.shp",
+    "../fc2024.01_chan/FC2024.01_channels_centerlines.shp"
 ]
 
 nodes_to_highlight = [112, 176, 69]
@@ -18,7 +22,7 @@ channels = gpd.read_file(shapefile_paths[1])
 
 nodes_filter = nodes[nodes['id'].isin(nodes_to_highlight)]
 
-channels_with_numbers = pd.read_csv('data-raw/channel_names_from_h5.csv')
+channels_with_numbers = pd.read_csv('../channel_names_from_h5.csv')
 channels_with_numbers = channels_with_numbers.rename(columns={'chan_no': 'id'})
 
 channels_merge = pd.merge(
