@@ -3,6 +3,14 @@ import altair as alt
 from pandas import DataFrame
 import numpy as np
 
+location_gate = {
+        "GLC":"Grantline",
+        "MID":"MiddleRiver",
+        "OLD":"OldRiver",
+    }
+# gate_coodrinates = {
+#     ""
+# }
 def post_process_gateop(multi_model_data, model, gate, year=None, start_date=None, end_date=None):
     gate_data = multi_model_data[model][gate]['gate_operation_data']
     if year:
@@ -12,7 +20,10 @@ def post_process_gateop(multi_model_data, model, gate, year=None, start_date=Non
     #     gate_data['date'] = gate_data["datetime"].dt.date
     #     gate_data = gate_data[(gate_data["date"] >= start_date) & 
     #                           (gate_data["date"] <= end_date)]
-    #     gate_data['datetime'].dt.month.between(5, 11)
+    gate_data = gate_data.loc[
+            gate_data['datetime'].dt.month.between(5, 11)
+    ]
+        # gate_data['datetime'].dt.month.between(5, 11)
     # ]
     gate_up_df = gate_data[["datetime", "value"]]
     gate_up_df["gate_status"] = gate_up_df['value']>=10
@@ -36,9 +47,9 @@ def post_process_velocity(multi_model_data, model, gate, year=None, start_date=N
     if year:
         vel_zoom_df["year"] = vel_zoom_df["datetime"].dt.year
         vel_zoom_df = vel_zoom_df[vel_zoom_df["year"] == year]
-    # vel_zoom_df = vel_zoom_df.loc[
-    #         vel_zoom_df['datetime'].dt.month.between(5, 11)
-    # ]
+    vel_zoom_df = vel_zoom_df.loc[
+            vel_zoom_df['datetime'].dt.month.between(5, 11)
+    ]
     # if start_date:
     #     vel_zoom_df['date'] = vel_zoom_df["datetime"].dt.date
     #     vel_zoom_df = vel_zoom_df[(vel_zoom_df["date"] >= start_date) & 
@@ -180,7 +191,7 @@ def generate_velocity_gate_charts(full_merged_df):
     brush = alt.selection_interval(encodings=['x'], mark=alt.BrushConfig(stroke="cyan", strokeOpacity=1))
 
     # Velocity bar chart
-    base_vel = alt.Chart(summary_stats_vel, width=800, height=300).mark_bar().encode(
+    base_vel = alt.Chart(summary_stats_vel, width=650, height=300).mark_bar().encode(
         x=alt.X("date:T", title="Date"),
         y=alt.Y("total_velocity_duration:Q", title="Hours"),
         color=alt.condition(
@@ -197,7 +208,7 @@ def generate_velocity_gate_charts(full_merged_df):
         ),
         tooltip=["date:T", "Velocity_Category:N", "total_velocity_duration:Q"]
     ).properties(
-        title=f"Daily Velocity at {gate} Over/Under 8 ft/s Duration Summary"
+        title=f"Daily Velocity at {location_gate[gate]} Over/Under 8 ft/s Duration Summary"
     )
 
     upper_vel = base_vel.mark_bar(width=alt.RelativeBandSize(0.7), stroke='grey', strokeWidth=0.5).encode(
@@ -211,7 +222,7 @@ def generate_velocity_gate_charts(full_merged_df):
     vel_bar_chart = upper_vel & lower_vel
 
     # Gate bar chart
-    base_gate = alt.Chart(summary_stats_dgl, width=800, height=300).mark_bar().encode(
+    base_gate = alt.Chart(summary_stats_dgl, width=650, height=300).mark_bar().encode(
         x=alt.X("date:T", title="Date"),
         y=alt.Y("total_gate_duration:Q", title="Hours"),
         color=alt.condition(

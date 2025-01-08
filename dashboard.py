@@ -3,6 +3,8 @@ import pandas as pd
 import altair as alt
 import pickle
 from figures_functions import *
+import plotly.express as px
+import datetime
 
 #TODO: add border to top barchart
 #TODO: add elevation graph based on week
@@ -42,6 +44,11 @@ if uploaded_file:
     
     #-------------------------------------------------------------------------------------------------------------------------------
     # Markdown
+    # location_gate = {
+    #     "GLC":"Grantline",
+    #     "MID":"MiddleRiver",
+    #     "OLD":"OldRiver",
+    # }
     models = multi_model_data.keys()
     selected_model = st.selectbox('Select Model:', models)
     years = multi_model_data[selected_model]["GLC"]["gate_operation_data"]["datetime"].dt.year.unique().tolist()
@@ -51,21 +58,19 @@ if uploaded_file:
         selected_year = int(selected_option)
     else:
         selected_year = None
-    st.sidebar.write("### Filter by Date Range")
-    start_date, end_date = st.sidebar.date_input(
-        "Select a date range:",
-        [multi_model_data[selected_model]["GLC"]["gate_operation_data"]["datetime"].min().date(), 
-        multi_model_data[selected_model]["GLC"]["gate_operation_data"]["datetime"].max().date()],
-        min_value=multi_model_data[selected_model]["GLC"]["gate_operation_data"]["datetime"].min().date(),
-        max_value=multi_model_data[selected_model]["GLC"]["gate_operation_data"]["datetime"].max().date()
-    )
+    # st.sidebar.write("### Filter by Date Range")
+    # start_date, end_date = st.sidebar.date_input(
+    #     "Select a date range:",
+    #     [multi_model_data[selected_model]["GLC"]["gate_operation_data"]["datetime"].min().date(), 
+    #     multi_model_data[selected_model]["GLC"]["gate_operation_data"]["datetime"].max().date()],
+    #     min_value=multi_model_data[selected_model]["GLC"]["gate_operation_data"]["datetime"].min().date(),
+    #     max_value=multi_model_data[selected_model]["GLC"]["gate_operation_data"]["datetime"].max().date()
+    # )
 
     glc_full_merged_df = post_process_full_data(multi_model_data, 
                                                 selected_model, 
                                                 "GLC", 
                                                 year=selected_year)
-                                                # start_date=start_date,
-                                                # end_date=end_date)
     glc_full_merged_df = glc_full_merged_df.rename(columns={"value": "velocity"})
     glc_avg_daily_velocity = calc_avg_daily_vel(glc_full_merged_df)
     glc_avg_daily_gate = calc_avg_daily_gate(glc_full_merged_df)
@@ -92,54 +97,88 @@ if uploaded_file:
     glc_min_velocity = min(glc_full_merged_df['velocity'])
     glc_max_velocity = max(glc_full_merged_df['velocity'])
 
-    velocity_summary_stats_title = f"Summary stats of Grantline fish passage from {glc_min_date} to {glc_max_date}."
-    gate_summary_stats_title = f"Summary stats of upstream of gate at DGL from {glc_min_date} to {glc_max_date}."
-    min_max_summary_title = f"Min max stats of Grantline fish passage from {glc_min_date} to {glc_max_date}."
-    velocity_summary_data = {
-        "Metric": [
-            f"Average Daily Time {glc_avg_daily_velocity['Velocity_Category'][0]}",
-            f"Average Daily Time {glc_avg_daily_velocity['Velocity_Category'][1]}",
-            f"Average Streak Duration {glc_total_daily_velocity['Velocity_Category'][0]}",
-            f"Average Streak Duration {glc_total_daily_velocity['Velocity_Category'][1]}"
-            ],
-        "Hours":[
-            f"{glc_avg_daily_velocity['time_unit'][0]:.2f}",
-            f"{glc_avg_daily_velocity['time_unit'][1]:.2f}",
-            f"{glc_total_daily_velocity['daily_average_time_per_consecutive_group'][0]:.2f}",
-            f"{glc_total_daily_velocity['daily_average_time_per_consecutive_group'][1]:.2f}",
-        ]}
+    velocity_summary_stats_title = f"Summary stats of fish passage from {glc_min_date} to {glc_max_date}."
+    gate_summary_stats_title = f"Summary stats of upstream of gate from {glc_min_date} to {glc_max_date}."
+    min_max_summary_title = f"Min max stats of fish passage from {glc_min_date} to {glc_max_date}."
     
-    gate_summary_data = {
-        "Metric": [
-            f"Average Daily {glc_avg_daily_gate['gate_status'][0]} Time for DGL gate",
-            f"Average Daily {glc_avg_daily_gate['gate_status'][1]} Time for DGL Gate",
-            f"Average {glc_total_daily_gate['gate_status'][0]} Duration Per Streak",
-            f"Average {glc_total_daily_gate['gate_status'][1]} Duration Per Streak"
+    velocity_summary_data = {
+        "Location": [
+            location_gate[glc_full_merged_df['gate'][0]],
+            location_gate[mid_full_merged_df['gate'][0]],
+            location_gate[old_full_merged_df['gate'][0]]
         ],
-        "Hours": [
-            f"{glc_avg_daily_gate['time_unit'][0]:.2f}",
-            f"{glc_avg_daily_gate['time_unit'][1]:.2f}",
-            f"{glc_total_daily_gate['daily_average_time_per_consecutive_gate'][0]:.2f}",
-            f"{glc_total_daily_gate['daily_average_time_per_consecutive_gate'][1]:.2f}"
+        f"Average Daily Time (Hours) {glc_avg_daily_velocity['Velocity_Category'][0]}":[
+            f"{glc_avg_daily_velocity['time_unit'][0]:.2f}",
+            f"{mid_avg_daily_velocity['time_unit'][0]:.2f}",
+            f"{old_avg_daily_velocity['time_unit'][0]:.2f}",
+        ],
+        f"Average Daily Time (Hours) {glc_avg_daily_velocity['Velocity_Category'][1]}":[
+            f"{glc_avg_daily_velocity['time_unit'][1]:.2f}",
+            f"{mid_avg_daily_velocity['time_unit'][1]:.2f}",
+            f"{old_avg_daily_velocity['time_unit'][1]:.2f}",
+        ],
+        f"Average Streak Duration (Hours) {glc_total_daily_velocity['Velocity_Category'][0]}":[
+            f"{glc_total_daily_velocity['daily_average_time_per_consecutive_group'][0]:.2f}",
+            f"{mid_total_daily_velocity['daily_average_time_per_consecutive_group'][0]:.2f}",
+            f"{old_total_daily_velocity['daily_average_time_per_consecutive_group'][0]:.2f}",
+        ],
+        f"Average Streak Duration (Hours) {glc_total_daily_velocity['Velocity_Category'][1]}":[
+            f"{glc_total_daily_velocity['daily_average_time_per_consecutive_group'][1]:.2f}",
+            f"{mid_total_daily_velocity['daily_average_time_per_consecutive_group'][1]:.2f}",
+            f"{old_total_daily_velocity['daily_average_time_per_consecutive_group'][1]:.2f}",
         ]
     }
 
-    min_max_summary = {
-        "Metric": [
-            f"Minimum velocity through fish passage",
-            f"Maximum velocity through fish passage"
+    gate_summary_data = {
+        "Location": [
+            glc_full_merged_df['gate'][0],
+            mid_full_merged_df['gate'][0],
+            old_full_merged_df['gate'][0]
         ],
-        "Velocity": [
-            f"{glc_min_velocity:.2f} ft/s",
-            f"{glc_max_velocity:.2f} ft/s"
+        f"Average Daily {glc_avg_daily_gate['gate_status'][0]} Time (Hours) for gate":[
+            f"{glc_avg_daily_gate['time_unit'][0]:.2f}",
+            f"{mid_avg_daily_gate['time_unit'][0]:.2f}",
+            f"{old_avg_daily_gate['time_unit'][0]:.2f}",
+        ],
+        f"Average Daily {glc_avg_daily_gate['gate_status'][1]} Time (Hours) for gate":[
+            f"{glc_avg_daily_gate['time_unit'][1]:.2f}",
+            f"{mid_avg_daily_gate['time_unit'][1]:.2f}",
+            f"{old_avg_daily_gate['time_unit'][1]:.2f}",
+        ],
+        f"Average {glc_total_daily_gate['gate_status'][0]} Duration (Hours) Per Streak":[
+            f"{glc_total_daily_gate['daily_average_time_per_consecutive_gate'][0]:.2f}",
+            f"{mid_total_daily_gate['daily_average_time_per_consecutive_gate'][0]:.2f}",
+            f"{old_total_daily_gate['daily_average_time_per_consecutive_gate'][0]:.2f}",
+        ],
+        f"Average {glc_total_daily_gate['gate_status'][1]} Duration (Hours) Per Streak":[
+            f"{glc_total_daily_gate['daily_average_time_per_consecutive_gate'][1]:.2f}",
+            f"{mid_total_daily_gate['daily_average_time_per_consecutive_gate'][1]:.2f}",
+            f"{old_total_daily_gate['daily_average_time_per_consecutive_gate'][1]:.2f}",
         ]
     }
-    # Create a DataFrame
+    
+    min_max_summary = {
+        "Location": [
+            location_gate[glc_full_merged_df['gate'][0]],
+            location_gate[mid_full_merged_df['gate'][0]],
+            location_gate[old_full_merged_df['gate'][0]]
+        ],
+        "Minimum velocity through fish passage":[
+            f"{min(glc_full_merged_df['velocity']):.2f} ft/s",
+            f"{min(mid_full_merged_df['velocity']):.2f} ft/s",
+            f"{min(old_full_merged_df['velocity']):.2f} ft/s",
+        ],
+        "Maximum velocity through fish passage":[
+            f"{max(glc_full_merged_df['velocity']):.2f} ft/s",
+            f"{max(mid_full_merged_df['velocity']):.2f} ft/s",
+            f"{max(old_full_merged_df['velocity']):.2f} ft/s",
+        ]
+    }
+
+       # Create a DataFrame
     velocity_summary_df = pd.DataFrame(velocity_summary_data)
     gate_summary_df = pd.DataFrame(gate_summary_data)
     min_max_vel_summary_df = pd.DataFrame(min_max_summary)
-    velocity_text = f"The daily average of velocity over 8ft/s over the entire time period is {glc_avg_daily_velocity['time_unit'][0]:.2f} hours. The daily average of velocity under 8ft/s over the entire time period is {glc_avg_daily_velocity['time_unit'][1]:.2f} hours."
-    dgl_text = f"The daily average of the DGL Gate over the entire time period is {glc_avg_daily_gate['time_unit'][0]:.2f} hours.  The daily average of the DGL Gate closed over the entire period is {glc_avg_daily_gate['time_unit'][1]:.2f} hours."
     
     glc_chart = generate_velocity_gate_charts(glc_full_merged_df)
     mid_chart = generate_velocity_gate_charts(mid_full_merged_df)
@@ -156,6 +195,40 @@ if uploaded_file:
         }]
     ), use_container_width=True)
 
+    # st.write("### Interactive Map - Click a Point") 
+    # data = pd.DataFrame({
+    #     "gates": ["GLC", "OLD", "MID"],
+    #     "latitude": [34.07105502661072, 34.055021339285005, 34.07412241104673],
+    #     "longitude": [-118.33807459509656, -118.25021296787665, -118.25840626969342],
+    #     # "value": [100, 200, 300]
+    # })
+
+    # # Create an interactive Plotly map
+    # fig_map = px.scatter_mapbox(
+    #     data,
+    #     lat="latitude",
+    #     lon="longitude",
+    #     size=[50, 50, 50],
+    #     color="gates",
+    #     size_max=100,
+    #     zoom=12,
+    #     mapbox_style="carto-positron"  # Map style
+    # )
+
+    # event = st.plotly_chart(
+    #     fig_map,
+    #     on_select="rerun",
+    #     selection_mode=["box", "points"],
+    #     key="map_data",  # Store selection in session_state
+    # )
+    # event
+    # st.write(st.session_state.map_data)
+
+
+
+# Display the selected data (If any)
+    # st.dataframe(st.session_state.map_data)
+    
     st.write("### Data Summary")
     st.write(velocity_summary_stats_title)
     st.table(velocity_summary_df)   
@@ -169,17 +242,17 @@ if uploaded_file:
     st.write('#')    
     st.write("### Visualization 1: Daily Gate Status Duration vs Daily Velocity Flow Duration")
     # st.altair_chart(combined_chart, use_container_width=True, theme=None)
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3 = st.columns([3, 3, 3], gap="small")
     with col1:
         st.altair_chart(glc_chart, use_container_width=True, theme=None)
     with col2:
         st.altair_chart(old_chart, use_container_width=True, theme=None)
     with col3:
         st.altair_chart(mid_chart, use_container_width=True, theme=None)
-    # st.write('###')
-    # st.write("### Visualization 2: Flow Velocity and Gate Status Zoomed in By Week")
-    # drop_down_week = full_merged_df['week'].unique().tolist()
-    # week_to_date_mapping = full_merged_df.groupby("week")["date"].min()
+    st.write('###')
+    st.write("### Visualization 2: Flow Velocity and Gate Status Zoomed")
+    # drop_down_week = glc_full_merged_df['week'].unique().tolist()
+    # week_to_date_mapping = glc_full_merged_df.groupby("week")["date"].min()
     # week_to_date_dict = week_to_date_mapping.to_dict()
     # drop_down_options = [
     #     f"Week {week} (Start Date: {date})"
@@ -187,39 +260,82 @@ if uploaded_file:
     # ]
     # selected_option = st.selectbox('Select Week:', drop_down_options)
     # selected_week = int(selected_option.split()[1])
+    default_start_date = pd.to_datetime(glc_full_merged_df['date'].min())
+    default_end_date = pd.to_datetime(glc_full_merged_df['date'].min()) + datetime.timedelta(days=7)
     
-    # # Filter the data manually based on user input
-    # filtered_df = full_merged_df[full_merged_df['week'] == selected_week]
-    # #-------------------------------------------------------------------------------------------------------
-    # weekly_summary_stats_title = f"Daily summary stats from week {selected_option} ."
+    start_date = default_start_date
+    end_date = default_end_date
+
+    if "selected_date_range" not in st.session_state:
+        st.session_state.selected_date_range = None
+    def submit_date_range():
+        st.session_state.selected_date_range = st.session_state.date_range_input
+    
+
+    st.date_input("Pick a date range:", value=(default_start_date, default_end_date), key="date_range_input", help="Select start and end dates")
+    st.button("Filter Data", on_click=submit_date_range)
+    if st.session_state.selected_date_range:
+        start_date, end_date = st.session_state.selected_date_range
+        if start_date and end_date:
+            st.write(f"Date Filtered.")
+
+    start_date = str(start_date)
+    end_date = str(end_date)
+
+    filtered_glc_df = glc_full_merged_df[(glc_full_merged_df['date'] >= start_date) & (glc_full_merged_df['date'] <= end_date)]
+    filtered_mid_df = mid_full_merged_df[(mid_full_merged_df['date'] >= start_date) & (mid_full_merged_df['date'] <= end_date)]
+    filtered_old_df = old_full_merged_df[(old_full_merged_df['date'] >= start_date) & (old_full_merged_df['date'] <= end_date)]
+# #-------------------------------------------------------------------------------------------------------
+    summary_stats_title = f"Summary stats from {start_date} to {end_date}."
+    filtered_glc_avg_daily_velocity = calc_avg_daily_vel(filtered_glc_df)
+    filtered_glc_avg_daily_gate = calc_avg_daily_gate(filtered_glc_df)
+    
+    filtered_old_avg_daily_velocity = calc_avg_daily_vel(filtered_old_df)
+    filtered_old_avg_daily_gate = calc_avg_daily_gate(filtered_old_df)
+    
+    filtered_mid_avg_daily_velocity = calc_avg_daily_vel(filtered_mid_df)
+    filtered_mid_avg_daily_gate = calc_avg_daily_gate(filtered_mid_df)
+    
     # weekly_daily_velocity = filtered_df.groupby(["date", "Velocity_Category"])["time_unit"].sum().reset_index()
     # weekly_avg_daily_velocity = weekly_daily_velocity.groupby("Velocity_Category")['time_unit'].mean().reset_index()
-    
-    # weekly_daily_gate = filtered_df.groupby(["date","DGL"])["time_unit"].sum().reset_index()
-    # weekly_avg_daily_gate = weekly_daily_gate.groupby("DGL")['time_unit'].mean().reset_index()
-    
-    # weekly_min_date = min(weekly_daily_velocity['date'])
-    # weekly_max_date = max(weekly_daily_velocity['date'])
+    # weekly_daily_gate = filtered_df.groupby(["date","gate_status"])["time_unit"].sum().reset_index()
+    # weekly_avg_daily_gate = weekly_daily_gate.groupby("gate_status")['time_unit'].mean().reset_index()
+    weekly_min_date = min(filtered_glc_df['date'])
+    weekly_max_date = max(filtered_glc_df['date'])
 
-    # weekly_summary_data = {
-    #     "Metric": [
-    #         f"Average Daily Time {weekly_avg_daily_velocity['Velocity_Category'][0]}",
-    #         f"Average Daily Time {weekly_avg_daily_velocity['Velocity_Category'][1]}",
-    #         f"Average Daily {weekly_avg_daily_gate['DGL'][0]} Time for DGL Gate",
-    #         f"Average Daily {weekly_avg_daily_gate['DGL'][1]} Time for DGL Gate"
-    #     ],
-    #     "Hours": [
-    #         f"{weekly_avg_daily_velocity['time_unit'][0]:.2f}",
-    #         f"{weekly_avg_daily_velocity['time_unit'][1]:.2f}",
-    #         f"{weekly_avg_daily_gate['time_unit'][0]:.2f}",
-    #         f"{weekly_avg_daily_gate['time_unit'][1]:.2f}"
-    #     ]
-    # }
+    weekly_summary_data = {
+        "Location": [
+            location_gate[glc_full_merged_df['gate'][0]],
+            location_gate[mid_full_merged_df['gate'][0]],
+            location_gate[old_full_merged_df['gate'][0]]
+        ],
+        f"Average Daily Time (Hours) {filtered_glc_avg_daily_velocity['Velocity_Category'][0]}":[
+            f"{filtered_glc_avg_daily_velocity['time_unit'][0]:.2f}",
+            f"{filtered_mid_avg_daily_velocity['time_unit'][0]:.2f}",
+            f"{filtered_old_avg_daily_velocity['time_unit'][0]:.2f}",
+        ],
+        f"Average Daily Time (Hours) {filtered_glc_avg_daily_velocity['Velocity_Category'][1]}":[
+            f"{filtered_glc_avg_daily_velocity['time_unit'][1]:.2f}",
+            f"{filtered_mid_avg_daily_velocity['time_unit'][1]:.2f}",
+            f"{filtered_old_avg_daily_velocity['time_unit'][1]:.2f}",
+        ],
+        f"Average Daily {filtered_glc_avg_daily_gate['gate_status'][0]} Time (Hours) for gate":[
+            f"{filtered_glc_avg_daily_velocity['time_unit'][0]:.2f}",
+            f"{filtered_mid_avg_daily_gate['time_unit'][0]:.2f}",
+            f"{filtered_old_avg_daily_gate['time_unit'][0]:.2f}",
+        ],
+        f"Average Daily {filtered_glc_avg_daily_gate['gate_status'][1]} Time (Hours) for gate":[
+            f"{filtered_glc_avg_daily_velocity['time_unit'][1]:.2f}",
+            f"{filtered_mid_avg_daily_gate['time_unit'][1]:.2f}",
+            f"{filtered_old_avg_daily_gate['time_unit'][1]:.2f}",
+        ],
 
-    # # Create a DataFrame
-    # weekly_summary_df = pd.DataFrame(weekly_summary_data)
-    # st.write(weekly_summary_stats_title)
-    # st.table(weekly_summary_df)
+    }
+
+# Create a DataFrame
+    weekly_summary_df = pd.DataFrame(weekly_summary_data)
+    st.write(summary_stats_title)
+    st.table(weekly_summary_df)
     # #-------------------------------------------------------------------------------------------------------
     # # Create an Altair chart using the filtered data
     # # Define a colorblind-friendly palette
