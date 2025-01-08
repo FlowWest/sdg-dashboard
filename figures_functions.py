@@ -8,9 +8,7 @@ location_gate = {
         "MID":"MiddleRiver",
         "OLD":"OldRiver",
     }
-# gate_coodrinates = {
-#     ""
-# }
+
 def post_process_gateop(multi_model_data, model, gate, year=None, start_date=None, end_date=None):
     gate_data = multi_model_data[model][gate]['gate_operation_data']
     if year:
@@ -80,6 +78,19 @@ def post_process_full_data(multi_model_data, model, gate, year=None, start_date=
     full_merged_df['model'] = model
     
     return full_merged_df
+
+def post_process_hydro_data(multi_model_data, model, gate, year=None, start_date=None, end_date=None):
+    hydro_df =multi_model_data[model][gate]["water_level_data"]
+    if year:
+        hydro_df["year"] = hydro_df["datetime"].dt.year
+        hydro_df = hydro_df[hydro_df["year"] == year]
+    hydro_df = hydro_df.loc[
+            hydro_df['datetime'].dt.month.between(5, 11)
+    ]
+    hydro_df['time_unit'] = 0.25
+    hydro_df = hydro_df.rename(columns={"value": "water_level"})
+    hydro_df['week'] = hydro_df['datetime'].dt.isocalendar().week
+    return(hydro_df)
 
 def calc_avg_daily_vel(post_processed_data: DataFrame) -> DataFrame:
     """
@@ -156,7 +167,7 @@ def calc_avg_len_consec_gate(post_processed_data: DataFrame) -> DataFrame:
     
     return daily_average_per_duration_per_gate_over_period
 
-def generate_velocity_gate_charts(full_merged_df):
+def generate_velocity_gate_charts(full_merged_df, legend=None):
     """
     Generate bar charts for daily velocity and gate status summaries.
 
@@ -191,25 +202,47 @@ def generate_velocity_gate_charts(full_merged_df):
     brush = alt.selection_interval(encodings=['x'], mark=alt.BrushConfig(stroke="cyan", strokeOpacity=1))
 
     # Velocity bar chart
-    base_vel = alt.Chart(summary_stats_vel, width=650, height=300).mark_bar().encode(
-        x=alt.X("date:T", title="Date"),
-        y=alt.Y("total_velocity_duration:Q", title="Hours"),
-        color=alt.condition(
-            brush,
-            alt.Color(
-                'Velocity_Category:N',
-                title="Velocity Category",
-                scale=alt.Scale(
-                    domain=color_palette["Velocity_Category"].keys(),
-                    range=color_palette["Velocity_Category"].values()
-                )
+    if legend:
+        base_vel = alt.Chart(summary_stats_vel, width=650, height=300).mark_bar().encode(
+            x=alt.X("date:T", title="Date"),
+            y=alt.Y("total_velocity_duration:Q", title="Hours"),
+            color=alt.condition(
+                brush,
+                alt.Color(
+                    'Velocity_Category:N',
+                    title="Velocity Category",
+                    scale=alt.Scale(
+                        domain=color_palette["Velocity_Category"].keys(),
+                        range=color_palette["Velocity_Category"].values()
+                    )
+                ),
+                alt.value('lightgray')  # Gray for unselected
             ),
-            alt.value('lightgray')  # Gray for unselected
-        ),
-        tooltip=["date:T", "Velocity_Category:N", "total_velocity_duration:Q"]
-    ).properties(
-        title=f"Daily Velocity at {location_gate[gate]} Over/Under 8 ft/s Duration Summary"
-    )
+            tooltip=["date:T", "Velocity_Category:N", "total_velocity_duration:Q"]
+        ).properties(
+            title=f"Daily Velocity at {location_gate[gate]} Over/Under 8 ft/s Duration Summary"
+        )
+    else:
+        base_vel = alt.Chart(summary_stats_vel, width=600, height=300).mark_bar().encode(
+            x=alt.X("date:T", title="Date"),
+            y=alt.Y("total_velocity_duration:Q", title="Hours"),
+            color=alt.condition(
+                brush,
+                alt.Color(
+                    'Velocity_Category:N',
+                    title="Velocity Category",
+                    scale=alt.Scale(
+                        domain=color_palette["Velocity_Category"].keys(),
+                        range=color_palette["Velocity_Category"].values()
+                    ),
+                    legend=None
+                ),
+                alt.value('lightgray')  # Gray for unselected
+            ),
+            tooltip=["date:T", "Velocity_Category:N", "total_velocity_duration:Q"]
+        ).properties(
+            title=f"Daily Velocity at {location_gate[gate]} Over/Under 8 ft/s Duration Summary"
+        )
 
     upper_vel = base_vel.mark_bar(width=alt.RelativeBandSize(0.7), stroke='grey', strokeWidth=0.5).encode(
         alt.X('date:T', title="Date").scale(domain=brush)
@@ -222,25 +255,47 @@ def generate_velocity_gate_charts(full_merged_df):
     vel_bar_chart = upper_vel & lower_vel
 
     # Gate bar chart
-    base_gate = alt.Chart(summary_stats_dgl, width=650, height=300).mark_bar().encode(
-        x=alt.X("date:T", title="Date"),
-        y=alt.Y("total_gate_duration:Q", title="Hours"),
-        color=alt.condition(
-            brush,
-            alt.Color(
-                'gate_status:N',
-                title="Gate Status",
-                scale=alt.Scale(
-                    domain=color_palette["gate_status"].keys(),
-                    range=color_palette["gate_status"].values()
-                )
+    if legend:
+        base_gate = alt.Chart(summary_stats_dgl, width=600, height=300).mark_bar().encode(
+            x=alt.X("date:T", title="Date"),
+            y=alt.Y("total_gate_duration:Q", title="Hours"),
+            color=alt.condition(
+                brush,
+                alt.Color(
+                    'gate_status:N',
+                    title="Gate Status",
+                    scale=alt.Scale(
+                        domain=color_palette["gate_status"].keys(),
+                        range=color_palette["gate_status"].values()
+                    )
+                ),
+                alt.value('lightgray')  # Gray for unselected
             ),
-            alt.value('lightgray')  # Gray for unselected
-        ),
-        tooltip=["date:T", "gate_status:N", "total_gate_duration:Q"]
-    ).properties(
-        title=f"Daily {gate} Gate Status Duration Summary"
-    )
+            tooltip=["date:T", "gate_status:N", "total_gate_duration:Q"]
+        ).properties(
+            title=f"Daily {gate} Gate Status Duration Summary"
+        )
+    else:
+                base_gate = alt.Chart(summary_stats_dgl, width=600, height=300).mark_bar().encode(
+            x=alt.X("date:T", title="Date"),
+            y=alt.Y("total_gate_duration:Q", title="Hours"),
+            color=alt.condition(
+                brush,
+                alt.Color(
+                    'gate_status:N',
+                    title="Gate Status",
+                    scale=alt.Scale(
+                        domain=color_palette["gate_status"].keys(),
+                        range=color_palette["gate_status"].values()
+                    ),
+                    legend=None
+                ),
+                alt.value('lightgray')  # Gray for unselected
+            ),
+            tooltip=["date:T", "gate_status:N", "total_gate_duration:Q"]
+        ).properties(
+            title=f"Daily {gate} Gate Status Duration Summary"
+        )
 
     upper_gate = base_gate.mark_bar(width=alt.RelativeBandSize(0.7), stroke='grey', strokeWidth=0.5).encode(
         alt.X('date:T', title="Date").scale(domain=brush)
@@ -260,3 +315,260 @@ def generate_velocity_gate_charts(full_merged_df):
 
     return combined_bar_charts
 
+def generate_zoomed_velocity_charts(filtered_merged_df):
+    color_palette = {
+         "Velocity_Category": {"Over 8ft/s": "#a6cee3", "Under 8ft/s": "#1f78b4"},  # Blues
+         "gate_status": {"Closed": "#b2df8a", "Open": "#33a02c"}  # Greens
+         }
+    gate = filtered_merged_df['gate'].unique()[0]
+    model = filtered_merged_df['model'].unique()[0]
+
+    interval = alt.selection_interval(encodings=['x'],
+                                      mark=alt.BrushConfig(fill='blue')
+                                      )
+    base = alt.Chart(filtered_merged_df).mark_line(color=color_palette["Velocity_Category"]["Under 8ft/s"]).encode(
+        x=alt.X(
+            'yearmonthdatehoursminutes(datetime):T', 
+            title='Datetime', 
+            axis=alt.Axis(format='%b %d, %Y', labelAngle=-45, title='Date')
+        ),
+        y=alt.Y('velocity:Q', title='Velocity (ft/s)'),
+    ).add_params(interval).properties(
+        title=f"Fish Passage Velocity and {gate} Gate Status Zoomed",
+        height=300
+    )
+
+    closed_gates = filtered_merged_df[['gate_min_datetime', 'gate_max_datetime', 'gate_status']].drop_duplicates().reset_index(drop=True)
+    area_gate_true = alt.Chart(closed_gates).mark_rect(
+        color='orange'
+    ).encode(
+        x='gate_min_datetime:T',
+        x2='gate_max_datetime:T',
+        opacity=alt.value(0.2),
+        color=alt.value(color_palette["gate_status"]["Closed"]),
+        # color=alt.condition(interval, alt.value('orange'), alt.value('lightgray'))
+    ).transform_filter(
+        alt.datum.gate_status == "Closed"
+    )
+    yrule = alt.Chart(filtered_merged_df).mark_rule(color = "red", strokeDash=[12, 6], size=1.5).encode(
+            y=alt.datum(8)
+    ).properties(
+        width=300,
+        height=300
+    )
+
+    nearest = alt.selection_point(nearest=True, on="pointerover",
+                                  fields=["datetime"], empty=False)
+    points = base.mark_point().encode(
+        opacity=alt.condition(nearest, alt.value(1), alt.value(0))
+    )
+    # # Draw a rule at the location of the selection
+    rules = alt.Chart(filtered_merged_df).transform_calculate(
+        FlowVelocityDuration = "'Flow ' + datum.Velocity_Category + ' duration is ' + datum.streak_duration + ' hours'",
+        GateStatusDuration = "'Gate ' + datum.gate_status + ' duration is ' + datum.gate_streak_duration + ' hours'"
+    ).mark_rule(color="gray").encode(
+        x="datetime:T",
+        opacity=alt.condition(nearest, alt.value(0.3), alt.value(0)),
+        tooltip=[alt.Tooltip('yearmonthdatehoursminutes(datetime):T', title='Datetime'),
+                 alt.Tooltip('velocity:Q', title= "Velocity (ft/s)", format=".2f"),
+                 alt.Tooltip('FlowVelocityDuration:N', title="Flow Velocity Duration"),
+                 alt.Tooltip('GateStatusDuration:N', title="Gate Status Duration")
+                 ],
+    ).add_params(nearest)
+
+    vel_text = alt.Chart(filtered_merged_df).mark_text(align='right').encode(
+        y=alt.Y('stat:N', axis=None),
+        text=alt.Text('summary:N')
+    ).transform_filter(
+        interval
+    ).transform_aggregate(
+        max_velocity='max(velocity)',  
+        min_velocity='min(velocity)',
+        avg_velocity='mean(velocity)'
+    ).transform_fold(
+        ['max_velocity', 'min_velocity', 'avg_velocity'],  # Separate each statistic
+        as_=['stat', 'value']
+    ).transform_calculate(
+        summary='datum.stat + ": " + format(datum.value, ".2f")'
+    )
+    velocity = vel_text.encode(text='summary:N').properties(
+        title=alt.Title(text='Flow Velocity Summary', align='center')
+    )
+
+    vel_duration_text = alt.Chart(filtered_merged_df).mark_text(align='right').encode(
+        y=alt.Y('Velocity_Category:N', axis=None),
+        text=alt.Text('summary:N')
+    ).transform_filter(
+        interval
+    ).transform_aggregate(
+        total_time='sum(time_unit)',
+        groupby=["Velocity_Category"]
+    ).transform_fold(
+        ['total_time'],  # Separate each statistic
+        as_=['stat', 'value']
+    ).transform_calculate(
+        summary='datum.Velocity_Category + ": " + format(datum.total_time, ".2f") + " hours"'
+    )
+    velocity_duration = vel_duration_text.encode(text='summary:N').properties(
+        title=alt.Title(text='Velocity Duration Summary', align='center')
+    )
+
+    gate_duration_text = alt.Chart(filtered_merged_df).mark_text(align='right').encode(
+        y=alt.Y('gate_status:N', axis=None),
+        text=alt.Text('summary:N')
+    ).transform_filter(
+        interval
+    ).transform_aggregate(
+        total_time='sum(time_unit)',
+        groupby=["gate_status"]
+    ).transform_fold(
+        ['total_time'],  # Separate each statistic
+        as_=['stat', 'value']
+    ).transform_calculate(
+        summary='datum.gate_status + ": " + format(datum.total_time, ".2f") + " hours"'
+    )
+    gate_duration = gate_duration_text.encode(text='summary:N').properties(
+        title=alt.Title(text='Gate Status Duration Summary', align='center')
+    )
+
+    layered_chart = alt.layer(base, points, yrule, rules, area_gate_true).properties(
+        width=600,  
+        height=400
+    )
+    velocity = velocity.properties(width=200, height=100)
+    # daily_velocity = daily_velocity.properties(width=200, height=100)
+    velocity_duration = velocity_duration.properties(width=200, height=100)
+    gate_duration = gate_duration.properties(width=200, height=100)
+
+    text_summary = alt.hconcat(velocity, velocity_duration, gate_duration)
+    
+    combined_chart = alt.vconcat(
+        layered_chart,
+        # velocity
+        text_summary
+    ).properties(title= f"Model: {model}")
+
+    return combined_chart
+
+def generate_water_level_chart(filtered_hydro_df, filtered_merged_df):
+    color_palette = {
+        "Velocity_Category": {"Over 8ft/s": "#a6cee3", "Under 8ft/s": "#1f78b4"},  # Blues
+        "gate_status": {"Closed": "#b2df8a", "Open": "#33a02c"}  # Greens
+    }
+    gate = filtered_hydro_df['gate'].unique()[0]
+    model = filtered_hydro_df['scenario'].unique()[0]
+    interval = alt.selection_interval(encodings=['x'],
+                                  mark=alt.BrushConfig(fill='blue'))
+    base_elevation = alt.Chart(filtered_hydro_df).mark_line().encode(
+            x=alt.X('yearmonthdatehoursminutes(datetime):T', title='Date', axis=alt.Axis(format='%b %d, %Y', labelAngle=-45)),
+            y=alt.Y('water_level:Q', title='Feet'),
+            # color='scenario:N'
+        ).transform_fold(
+            ["scenario"],  # Columns to be "melted" into a long format
+            as_=['model', 'value']  # New column names
+        ).add_params(
+            interval
+        ).properties(
+            title=f"Summary of Minimum Stage At {gate}"
+        )
+    yrule_wl = alt.Chart(filtered_hydro_df).mark_rule(color = "purple", strokeDash=[12, 6], size=1.5).encode(
+                y=alt.datum(2.3)
+        )
+    yrule_wl_text = alt.Chart(filtered_hydro_df).mark_text(
+            text="Water Level Compliance",
+            align="left",
+            baseline="bottom",
+            fontSize=12,
+            color="grey",
+            dx=5  # Offset text slightly to the right of the rule
+        ).encode(
+            y=alt.datum(2.3)  # Same y position as the rule
+        )
+    nearest_elev = alt.selection_point(nearest=True, on="pointerover",
+                                      fields=["datetime"], empty=False)
+    points_elev = base_elevation.mark_point().encode(
+            opacity=alt.condition(nearest_elev, alt.value(1), alt.value(0))
+        )
+    rules_elev = alt.Chart(filtered_hydro_df).mark_rule(color="gray", opacity=0).encode(
+            x="datetime:T",
+            opacity=alt.condition(nearest_elev, alt.value(0.3), alt.value(0)),
+        ).add_params(nearest_elev)
+    when_near = alt.when(nearest_elev)
+    text = base_elevation.mark_text(
+            align="left", dx=5, dy=-5
+        ).transform_calculate(
+            label='format(datum.water_level, ".2f") + " feet"'
+        ).encode(
+            text=when_near.then("label:N").otherwise(alt.value(" "))
+        )
+    average_scenario_stage = alt.Chart(filtered_hydro_df).mark_text(align='right').encode(
+                y=alt.Y('stat:N', axis=None),
+                text=alt.Text('summary:N')
+            ).transform_filter(
+                interval
+            ).transform_aggregate(
+                average_stage='mean(water_level)'
+            ).transform_fold(
+                ['average_stage'],  # Separate each statistic
+                as_=['stat', 'value']
+            ).transform_calculate(
+                summary='format(datum.average_stage, ".2f") + " feet"'
+            )
+    avg_stage = average_scenario_stage.encode(text='summary:N').properties(
+                title=alt.Title(text=f'Average {model} Minimum Stage', align='center')
+        )
+    scenario_duration_below_wl = alt.Chart(filtered_hydro_df).mark_text(align='right').encode(
+            y=alt.Y('wl_stat:N', axis=None),
+                text=alt.Text('below_wl:N')
+            # ).transform_filter(
+            #     interval
+            ).transform_filter(
+                "datum.FPV1Ma < 2.3"
+            ).transform_aggregate(
+                total_time_below_wl='sum(time_unit)'
+            ).transform_calculate(
+                below_wl='format(datum.total_time_below_wl, ".2f") + " hour"'
+            ).properties(
+                title=alt.Title(text='Scenario Below Water Level Compliance', align='center')
+            )
+    closed_gates = filtered_merged_df[['gate_min_datetime', 'gate_max_datetime', 'gate_status']].drop_duplicates().reset_index(drop=True)
+    area_gate_true = alt.Chart(closed_gates).mark_rect(
+        color='orange'
+    ).encode(
+        x='gate_min_datetime:T',
+        x2='gate_max_datetime:T',
+        opacity=alt.value(0.2),
+        color=alt.value(color_palette["gate_status"]["Closed"]),
+        # color=alt.condition(interval, alt.value('orange'), alt.value('lightgray'))
+    ).transform_filter(
+        alt.datum.gate_status == "Closed"
+    )
+
+    # modeled_historic_below_wl = alt.Chart(filtered_df).mark_text(align='right').encode(
+    #         y=alt.Y('wl_stat:N', axis=None),
+    #             text=alt.Text('below_wl:N')
+    #         ).transform_filter(
+    #             interval
+    #         ).transform_filter(
+    #             "datum.Modeled_Historic < 2.3"
+    #         ).transform_aggregate(
+    #             total_time_below_wl='sum(time_unit)'
+    #         ).transform_calculate(
+    #             below_wl='format(datum.total_time_below_wl, ".2f") + " hour"'
+    #         ).properties(
+    #             title=alt.Title(text='Modeled Historic Below Water Level Compliance', align='center')
+    #         )
+
+    avg_stage = avg_stage.properties(width=200, height=100)
+    scenario_duration_below_wl = scenario_duration_below_wl.properties(width=200, height=100)
+    # modeled_historic_below_wl = modeled_historic_below_wl.properties(width=200, height=100)
+        # (base, points, yrule, rules, area_dgl_true
+    min_stage_chart = alt.layer(base_elevation, 
+                                  points_elev, 
+                                  yrule_wl, 
+                                  yrule_wl_text,
+                                  rules_elev,
+                                  area_gate_true,
+                                  text
+        ).properties(width=700, height=400, title= f"Model: {model}")
+    return min_stage_chart
