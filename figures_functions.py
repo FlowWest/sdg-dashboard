@@ -2,6 +2,7 @@ import pandas as pd
 import altair as alt
 from pandas import DataFrame
 import numpy as np
+import streamlit as st
 
 location_gate = {
         "GLC":"Grantline",
@@ -92,6 +93,7 @@ def post_process_hydro_data(multi_model_data, model, gate, year=None, start_date
     hydro_df['week'] = hydro_df['datetime'].dt.isocalendar().week
     return(hydro_df)
 
+# @st.cache_data
 def calc_avg_daily_vel(post_processed_data: DataFrame) -> DataFrame:
     """
     Calculate daily average of total amount of time velocity is above and below 8ft/s.
@@ -102,11 +104,13 @@ def calc_avg_daily_vel(post_processed_data: DataFrame) -> DataFrame:
     Returns:
     - DataFrame
     """
+    
     daily_velocity = post_processed_data.groupby(["date", "Velocity_Category"])["time_unit"].sum().reset_index()
     avg_daily_velocity = pd.DataFrame(daily_velocity.groupby("Velocity_Category")['time_unit'].sum()/daily_velocity["date"].nunique()).reset_index()
     
     return avg_daily_velocity
-
+    
+# @st.cache_data
 def calc_avg_daily_gate(post_processed_data: DataFrame) -> DataFrame:
     """
     Calculate daily average of total amount of time gate is open and closed.
@@ -120,9 +124,10 @@ def calc_avg_daily_gate(post_processed_data: DataFrame) -> DataFrame:
         
     daily_gate = post_processed_data.groupby(["date","gate_status"])["time_unit"].sum().reset_index()
     avg_daily_gate = pd.DataFrame(daily_gate.groupby("gate_status")['time_unit'].sum()/daily_gate["date"].nunique()).reset_index()
-
     return avg_daily_gate
+    
 
+# @st.cache_data
 def calc_avg_len_consec_vel(post_processed_data: DataFrame) -> DataFrame:
     """
     Calculate daily average of length of consecutive hours velocity is above and below 8ft/s.
@@ -133,6 +138,7 @@ def calc_avg_len_consec_vel(post_processed_data: DataFrame) -> DataFrame:
     Returns:
     - DataFrame
     """
+    
     daily_velocity_stats = post_processed_data.groupby(["date", "Velocity_Category"]).agg(
         unique_consecutive_groups=("consecutive_groups", "nunique"),
         total_time=("time_unit", "sum")
@@ -141,10 +147,11 @@ def calc_avg_len_consec_vel(post_processed_data: DataFrame) -> DataFrame:
     daily_velocity_stats["daily_average_time_per_consecutive_group"] = (
         daily_velocity_stats["total_time"] / daily_velocity_stats["unique_consecutive_groups"]
     )
-    daily_average_per_duration_per_velocity_over_period = daily_velocity_stats.groupby(["Velocity_Category"])['daily_average_time_per_consecutive_group'].mean().reset_index()
+    daily_average_per_duration_per_velocity_over_period = daily_velocity_stats.groupby(["Velocity_Category"])['daily_average_time_per_consecutive_group'].mean().reset_index()   
     
     return daily_average_per_duration_per_velocity_over_period
-
+    
+# @st.cache_data
 def calc_avg_len_consec_gate(post_processed_data: DataFrame) -> DataFrame:
     """
     Calculate daily average of length of consecutive hours gate is open or closed.
@@ -155,6 +162,7 @@ def calc_avg_len_consec_gate(post_processed_data: DataFrame) -> DataFrame:
     Returns:
     - DataFrame
     """    
+    
     daily_gate_stats = post_processed_data.groupby(["date", "gate_status"]).agg(
         unique_gate_count=("gate_count", "nunique"),
         total_time=("time_unit", "sum")
@@ -164,9 +172,14 @@ def calc_avg_len_consec_gate(post_processed_data: DataFrame) -> DataFrame:
         daily_gate_stats["total_time"] / daily_gate_stats["unique_gate_count"]
     )
     daily_average_per_duration_per_gate_over_period = daily_gate_stats.groupby(["gate_status"])['daily_average_time_per_consecutive_gate'].mean().reset_index()
-    
+
     return daily_average_per_duration_per_gate_over_period
 
+@st.cache_data
+def convert_df(df):
+    # IMPORTANT: Cache the conversion to prevent computation on every rerun
+    return df.to_csv(index=False).encode("utf-8")
+# @st.cache_data
 def generate_velocity_gate_charts(full_merged_df, legend=None):
     """
     Generate bar charts for daily velocity and gate status summaries.
@@ -203,7 +216,7 @@ def generate_velocity_gate_charts(full_merged_df, legend=None):
 
     # Velocity bar chart
     if legend:
-        base_vel = alt.Chart(summary_stats_vel, width=650, height=300).mark_bar().encode(
+        base_vel = alt.Chart(summary_stats_vel, width=550, height=300).mark_bar().encode(
             x=alt.X("date:T", title="Date"),
             y=alt.Y("total_velocity_duration:Q", title="Hours"),
             color=alt.condition(
@@ -223,7 +236,7 @@ def generate_velocity_gate_charts(full_merged_df, legend=None):
             title=f"Daily Velocity at {location_gate[gate]} Over/Under 8 ft/s Duration Summary"
         )
     else:
-        base_vel = alt.Chart(summary_stats_vel, width=600, height=300).mark_bar().encode(
+        base_vel = alt.Chart(summary_stats_vel, width=550, height=300).mark_bar().encode(
             x=alt.X("date:T", title="Date"),
             y=alt.Y("total_velocity_duration:Q", title="Hours"),
             color=alt.condition(
@@ -256,7 +269,7 @@ def generate_velocity_gate_charts(full_merged_df, legend=None):
 
     # Gate bar chart
     if legend:
-        base_gate = alt.Chart(summary_stats_dgl, width=600, height=300).mark_bar().encode(
+        base_gate = alt.Chart(summary_stats_dgl, width=550, height=300).mark_bar().encode(
             x=alt.X("date:T", title="Date"),
             y=alt.Y("total_gate_duration:Q", title="Hours"),
             color=alt.condition(
@@ -276,7 +289,7 @@ def generate_velocity_gate_charts(full_merged_df, legend=None):
             title=f"Daily {gate} Gate Status Duration Summary"
         )
     else:
-                base_gate = alt.Chart(summary_stats_dgl, width=600, height=300).mark_bar().encode(
+                base_gate = alt.Chart(summary_stats_dgl, width=550, height=300).mark_bar().encode(
             x=alt.X("date:T", title="Date"),
             y=alt.Y("total_gate_duration:Q", title="Hours"),
             color=alt.condition(
@@ -315,6 +328,7 @@ def generate_velocity_gate_charts(full_merged_df, legend=None):
 
     return combined_bar_charts
 
+# @st.cache_data
 def generate_zoomed_velocity_charts(filtered_merged_df):
     color_palette = {
          "Velocity_Category": {"Over 8ft/s": "#a6cee3", "Under 8ft/s": "#1f78b4"},  # Blues
@@ -322,6 +336,7 @@ def generate_zoomed_velocity_charts(filtered_merged_df):
          }
     gate = filtered_merged_df['gate'].unique()[0]
     model = filtered_merged_df['model'].unique()[0]
+    shared_y_scale = alt.Scale(domain=[-5, 17])
 
     interval = alt.selection_interval(encodings=['x'],
                                       mark=alt.BrushConfig(fill='blue')
@@ -332,7 +347,7 @@ def generate_zoomed_velocity_charts(filtered_merged_df):
             title='Datetime', 
             axis=alt.Axis(format='%b %d, %Y', labelAngle=-45, title='Date')
         ),
-        y=alt.Y('velocity:Q', title='Velocity (ft/s)'),
+        y=alt.Y('velocity:Q', title='Velocity (ft/s)', scale=shared_y_scale),
     ).add_params(interval).properties(
         title=f"Fish Passage Velocity and {gate} Gate Status Zoomed",
         height=300
@@ -432,7 +447,7 @@ def generate_zoomed_velocity_charts(filtered_merged_df):
     )
 
     layered_chart = alt.layer(base, points, yrule, rules, area_gate_true).properties(
-        width=600,  
+        width=500,  
         height=400
     )
     velocity = velocity.properties(width=200, height=100)
@@ -440,7 +455,8 @@ def generate_zoomed_velocity_charts(filtered_merged_df):
     velocity_duration = velocity_duration.properties(width=200, height=100)
     gate_duration = gate_duration.properties(width=200, height=100)
 
-    text_summary = alt.hconcat(velocity, velocity_duration, gate_duration)
+    horizontal_text_summary = alt.hconcat(velocity, velocity_duration)
+    text_summary = alt.vconcat(horizontal_text_summary, gate_duration)
     
     combined_chart = alt.vconcat(
         layered_chart,
@@ -448,8 +464,10 @@ def generate_zoomed_velocity_charts(filtered_merged_df):
         text_summary
     ).properties(title= f"Model: {model}")
 
+    # return (layered_chart, text_summary)
     return combined_chart
 
+# @st.cache_data
 def generate_water_level_chart(filtered_hydro_df, filtered_merged_df):
     color_palette = {
         "Velocity_Category": {"Over 8ft/s": "#a6cee3", "Under 8ft/s": "#1f78b4"},  # Blues
@@ -457,11 +475,12 @@ def generate_water_level_chart(filtered_hydro_df, filtered_merged_df):
     }
     gate = filtered_hydro_df['gate'].unique()[0]
     model = filtered_hydro_df['scenario'].unique()[0]
+    shared_y_scale = alt.Scale(domain=[0, 8])
     interval = alt.selection_interval(encodings=['x'],
                                   mark=alt.BrushConfig(fill='blue'))
     base_elevation = alt.Chart(filtered_hydro_df).mark_line().encode(
             x=alt.X('yearmonthdatehoursminutes(datetime):T', title='Date', axis=alt.Axis(format='%b %d, %Y', labelAngle=-45)),
-            y=alt.Y('water_level:Q', title='Feet'),
+            y=alt.Y('water_level:Q', title='Feet', scale = shared_y_scale),
             # color='scenario:N'
         ).transform_fold(
             ["scenario"],  # Columns to be "melted" into a long format

@@ -5,12 +5,20 @@ import pickle
 from figures_functions import *
 import plotly.express as px
 import datetime
+import numpy as np
 
 #TODO: add border to top barchart
 #TODO: add elevation graph based on week
 
 # Title and description
 st.set_page_config(layout="wide")
+
+# pg = st.navigation([
+#     st.Page("page1.py", title="First page", icon="🔥"),
+#     # st.Page(page2, title="Second page", icon=":material/favorite:"),
+# ])
+# pg.run()
+
 st.title("Exploratory Data Visualizations for SDG Analysis")
 st.write("Upload your data and explore interactive visualizations.")
 # File uploader
@@ -50,14 +58,15 @@ if uploaded_file:
     #     "OLD":"OldRiver",
     # }
     models = multi_model_data.keys()
-    selected_model = st.selectbox('Select Model:', models)
-    years = multi_model_data[selected_model]["GLC"]["gate_operation_data"]["datetime"].dt.year.unique().tolist()
-    years.append("None")
-    selected_option = st.selectbox('Select Year:', years)
-    if selected_option != "None":
-        selected_year = int(selected_option)
-    else:
-        selected_year = None
+    with st.sidebar:
+        selected_model = st.selectbox('Select Model:', models)
+        years = multi_model_data[selected_model]["GLC"]["gate_operation_data"]["datetime"].dt.year.unique().tolist()
+        years.append("None")
+        selected_option = st.selectbox('Select Year:', years)
+        if selected_option != "None":
+            selected_year = int(selected_option)
+        else:
+            selected_year = None
     # st.sidebar.write("### Filter by Date Range")
     # start_date, end_date = st.sidebar.date_input(
     #     "Select a date range:",
@@ -231,29 +240,51 @@ if uploaded_file:
 
 # Display the selected data (If any)
     # st.dataframe(st.session_state.map_data)
+    st.write("### Daily Gate Status Duration vs Daily Velocity Flow Duration")
     
-    st.write("### Data Summary")
-    st.write(velocity_summary_stats_title)
-    st.table(velocity_summary_df)   
-    st.write("")
-    st.write(min_max_summary_title)
-    st.table(min_max_vel_summary_df)
-    st.write("")
-    st.write(gate_summary_stats_title)
-    st.table(gate_summary_df)
+    viz_1_tab1, viz_1_tab2 = st.tabs(["🗃 Data Summary", "📈 Chart"])
+    # viz_1_tab1.write("### Data Summary")
+    viz_1_tab1.write(f"##### {velocity_summary_stats_title}")
+    viz_1_tab1.table(velocity_summary_df)   
+    viz_1_tab1.write("")
+    viz_1_tab1.write(f"##### {min_max_summary_title}")
+    viz_1_tab1.table(min_max_vel_summary_df)
+    viz_1_tab1.write("")
+    viz_1_tab1.write(f"##### {gate_summary_stats_title}")
+    viz_1_tab1.table(gate_summary_df)
     # Altair Visualization
-    st.write('#')    
-    st.write("### Visualization 1: Daily Gate Status Duration vs Daily Velocity Flow Duration")
+    # st.write('#')    
     # st.altair_chart(combined_chart, use_container_width=True, theme=None)
-    col1, col2, col3 = st.columns([3, 3, 3], gap="small")
+    col1, col2, col3 = viz_1_tab2.columns([3, 3, 3], gap="small")
     with col1:
         st.altair_chart(glc_chart, use_container_width=True, theme=None)
+        csv = convert_df(glc_full_merged_df)
+        st.download_button(
+            label="Download GLC Data",
+            data=csv,
+            file_name="glc_full_merged_df.csv",
+            mime="text/csv",
+        )
     with col2:
         st.altair_chart(mid_chart, use_container_width=True, theme=None)
+        csv = convert_df(mid_full_merged_df)
+        st.download_button(
+            label="Download MID Data",
+            data=csv,
+            file_name="mid_full_merged_df.csv",
+            mime="text/csv",
+        )
     with col3:
         st.altair_chart(old_chart, use_container_width=True, theme=None)
+        csv = convert_df(old_full_merged_df)
+        st.download_button(
+            label="Download OLD Data",
+            data=csv,
+            file_name="old_full_merged_df.csv",
+            mime="text/csv",
+        )
     st.write('###')
-    st.write("### Visualization 2: Flow Velocity and Gate Status Zoomed")
+    st.write("### Flow Velocity and Gate Status Zoomed")
     # drop_down_week = glc_full_merged_df['week'].unique().tolist()
     # week_to_date_mapping = glc_full_merged_df.groupby("week")["date"].min()
     # week_to_date_dict = week_to_date_mapping.to_dict()
@@ -271,6 +302,7 @@ if uploaded_file:
 
     if "selected_date_range" not in st.session_state:
         st.session_state.selected_date_range = None
+
     def submit_date_range():
         st.session_state.selected_date_range = st.session_state.date_range_input
     
@@ -340,156 +372,58 @@ if uploaded_file:
     }
 
 # Create a DataFrame
+    viz_2_tab1, viz_2_tab2 = st.tabs(["🗃 Data Summary", "📈 Chart"])
+    # try:
     weekly_summary_df = pd.DataFrame(weekly_summary_data)
-    st.write(summary_stats_title)
-    st.table(weekly_summary_df)
+    # weekly_summary_df.iloc[:, 1:4] = weekly_summary_df[1:].apply(pd.to_numeric)
+    viz_2_tab1.write(f"##### {summary_stats_title}")
+    viz_2_tab1.dataframe(weekly_summary_df.style)
+    # except:
+        # "Missing data to generate summary data for this time period. "
     # #-------------------------------------------------------------------------------------------------------
     # # Create an Altair chart using the filtered data
     # # Define a colorblind-friendly palette
-
-    # elev_cols = ["FP2VMa", "Modeled_Historic"]
-
-    # base_elevation = alt.Chart(filtered_glc_df).mark_line().encode(
-    #     x=alt.X('yearmonthdatehoursminutes(datetime):T', title='Date', axis=alt.Axis(format='%b %d, %Y', labelAngle=-45)),
-    #     y=alt.Y('value:Q', title='Feet'),
-    #     color='model:N'
-    # ).transform_fold(
-    #     ['FP2VMa', 'Modeled_Historic'],  # Columns to be "melted" into a long format
-    #     as_=['model', 'value']  # New column names
-    # ).add_params(
-    #     interval
-    # ).properties(
-    #     title="Weekly Summary of Stage, upstream of gates @ DGL"
-    # )
-    # yrule_wl = alt.Chart(filtered_glc_df).mark_rule(color = "purple", strokeDash=[12, 6], size=1.5).encode(
-    #         y=alt.datum(2.3)
-    # )
-    # yrule_wl_text = alt.Chart(filtered_glc_df).mark_text(
-    #     text="Water Level Compliance",
-    #     align="left",
-    #     baseline="bottom",
-    #     fontSize=12,
-    #     color="grey",
-    #     dx=5  # Offset text slightly to the right of the rule
-    # ).encode(
-    #     y=alt.datum(2.3)  # Same y position as the rule
-    # )
-    # nearest_elev = alt.selection_point(nearest=True, on="pointerover",
-    #                               fields=["datetime"], empty=False)
-    # points_elev = base_elevation.mark_point().encode(
-    #     opacity=alt.condition(nearest_elev, alt.value(1), alt.value(0))
-    # )
-    # rules_elev = alt.Chart(filtered_glc_df).mark_rule(color="gray", opacity=0).encode(
-    #     x="datetime:T",
-    #     opacity=alt.condition(nearest_elev, alt.value(0.3), alt.value(0)),
-    # ).add_params(nearest_elev)
-    # when_near = alt.when(nearest_elev)
-    # text = base_elevation.mark_text(
-    #     align="left", dx=5, dy=-5
-    # ).transform_calculate(
-    #     label='format(datum.value, ".2f") + " feet"'
-    # ).encode(
-    #     text=when_near.then("label:N").otherwise(alt.value(" "))
-    # )
-    # average_scenario_stage = alt.Chart(filtered_glc_df).mark_text(align='right').encode(
-    #         y=alt.Y('stat:N', axis=None),
-    #         text=alt.Text('summary:N')
-    #     ).transform_filter(
-    #         interval
-    #     ).transform_aggregate(
-    #         average_stage='mean(FP2VMa)'
-    #     ).transform_fold(
-    #         ['average_stage'],  # Separate each statistic
-    #         as_=['stat', 'value']
-    #     ).transform_calculate(
-    #         summary='format(datum.average_stage, ".2f") + " feet"'
-    #     )
-    # avg_stage = average_scenario_stage.encode(text='summary:N').properties(
-    #         title=alt.Title(text='Average FP2VMa Minimum Stage', align='center')
-    # )
-    # scenario_duration_below_wl = alt.Chart(filtered_glc_df).mark_text(align='right').encode(
-    #     y=alt.Y('wl_stat:N', axis=None),
-    #         text=alt.Text('below_wl:N')
-    #     # ).transform_filter(
-    #     #     interval
-    #     ).transform_filter(
-    #         "datum.FP2VMa < 2.3"
-    #     ).transform_aggregate(
-    #         total_time_below_wl='sum(time_unit)'
-    #     ).transform_calculate(
-    #         below_wl='format(datum.total_time_below_wl, ".2f") + " hour"'
-    #     ).properties(
-    #         title=alt.Title(text='Scenario Below Water Level Compliance', align='center')
-    #     )
-
-    # modeled_historic_below_wl = alt.Chart(filtered_glc_df).mark_text(align='right').encode(
-    #     y=alt.Y('wl_stat:N', axis=None),
-    #         text=alt.Text('below_wl:N')
-    #     ).transform_filter(
-    #         interval
-    #     ).transform_filter(
-    #         "datum.Modeled_Historic < 2.3"
-    #     ).transform_aggregate(
-    #         total_time_below_wl='sum(time_unit)'
-    #     ).transform_calculate(
-    #         below_wl='format(datum.total_time_below_wl, ".2f") + " hour"'
-    #     ).properties(
-    #         title=alt.Title(text='Modeled Historic Below Water Level Compliance', align='center')
-    #     )
-    
-    # avg_stage = avg_stage.properties(width=200, height=100)
-    # scenario_duration_below_wl = scenario_duration_below_wl.properties(width=200, height=100)
-    # modeled_historic_below_wl = modeled_historic_below_wl.properties(width=200, height=100)
-    # # (base, points, yrule, rules, area_gate_status_true
-    # weekly_min_stage_chart = alt.layer(base_elevation, 
-    #                           points_elev, 
-    #                           yrule_wl, 
-    #                           yrule_wl_text,
-    #                           rules_elev,
-    #                           area_dgl_true,
-    #                           text
-    # ).properties(width=650, height=400)
-    
-    # combined_elev_text = alt.vconcat(
-    #     avg_stage,
-    #     scenario_duration_below_wl,
-    #     modeled_historic_below_wl
-    # )
-    # combined_elev_chart = alt.hconcat(
-    #     weekly_min_stage_chart,
-    #     combined_elev_text
-    # )
-    
-    # joint_chart = alt.vconcat(
-    #     combined_elev_chart,
-    #     combined_chart
-    # )
     # Display the chart in Streamlit
     
     # st.altair_chart(daily_velocity, use_container_width=False)
     glc_zoomed_vel_chart  = generate_zoomed_velocity_charts(filtered_glc_df)
     mid_zoomed_vel_chart = generate_zoomed_velocity_charts(filtered_mid_df)
     old_zoomed_vel_chart = generate_zoomed_velocity_charts(filtered_old_df)
-    st.write("#")
-    col1, col2, col3 = st.columns([3, 3, 3], gap="small")
+    # st.write("#")
+    col1, col2, col3 = viz_2_tab2.columns([10, 10, 10], gap="small")
     with col1:
-        st.altair_chart(glc_zoomed_vel_chart, use_container_width=False, theme=None)
+        st.altair_chart(glc_zoomed_vel_chart, 
+                        # use_container_width=True, 
+                        theme=None)
+        # st.altair_chart(glc_zoomed_vel_chart[1], use_container_width=True, theme=None)
     with col2:
-        st.altair_chart(mid_zoomed_vel_chart, use_container_width=False, theme=None)
+        st.altair_chart(mid_zoomed_vel_chart, 
+                        # use_container_width=True, 
+                        theme=None)
     with col3:
-        st.altair_chart(old_zoomed_vel_chart, use_container_width=False, theme=None)
+        st.altair_chart(old_zoomed_vel_chart, 
+                        # use_container_width=True, 
+                        theme=None)
+    # col1, col2, col3 = st.columns([10, 10, 10], gap="small")
+    # with col1:
+    #     st.altair_chart(glc_zoomed_vel_chart[1], use_container_width=True, theme=None)
+    #     # st.altair_chart(glc_zoomed_vel_chart[1], use_container_width=True, theme=None)
+    # with col2:
+    #     st.altair_chart(mid_zoomed_vel_chart[1], use_container_width=True, theme=None)
+    # with col3:
+    #     st.altair_chart(old_zoomed_vel_chart[1], use_container_width=True, theme=None)
 
     glc_zoomed_hydro_chart  = generate_water_level_chart(filtered_glc_hydro_df,filtered_glc_df)
     mid_zoomed_hydro_chart = generate_water_level_chart(filtered_mid_hydro_df, filtered_mid_df)
     old_zoomed_hydro_chart = generate_water_level_chart(filtered_old_hydro_df, filtered_old_df)
-    st.write("#")
-    col1, col2, col3 = st.columns([3, 3, 3], gap="small")
+    # st.write("#")
+    col1, col2, col3 = viz_2_tab2.columns([3, 3, 3], gap="small")
     with col1:
-        st.altair_chart(glc_zoomed_hydro_chart, use_container_width=False, theme=None)
+        st.altair_chart(glc_zoomed_hydro_chart, use_container_width=True, theme=None)
     with col2:
-        st.altair_chart(mid_zoomed_hydro_chart, use_container_width=False, theme=None)
+        st.altair_chart(mid_zoomed_hydro_chart, use_container_width=True, theme=None)
     with col3:
-        st.altair_chart(old_zoomed_hydro_chart, use_container_width=False, theme=None)
+        st.altair_chart(old_zoomed_hydro_chart, use_container_width=True, theme=None)
     # st.altair_chart(combined_chart, use_container_width=False, theme=None)
     # st.altair_chart(combined_elev_chart, use_container_width=False, theme=None)
     # st.altair_chart(joint_chart, use_container_width=False, theme=None)
