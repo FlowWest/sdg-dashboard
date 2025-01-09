@@ -3,7 +3,7 @@ import pandas as pd
 import altair as alt
 import pickle
 from figures_functions import *
-import plotly.express as px
+#import plotly.express as px
 import datetime
 import numpy as np
 
