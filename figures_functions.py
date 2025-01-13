@@ -216,14 +216,14 @@ def generate_velocity_gate_charts(full_merged_df, legend=None):
 
     # Velocity bar chart
     if legend:
-        base_vel = alt.Chart(summary_stats_vel, width=550, height=300).mark_bar().encode(
+        base_vel = alt.Chart(summary_stats_vel, width=625, height=300).mark_bar().encode(
             x=alt.X("date:T", title="Date"),
             y=alt.Y("total_velocity_duration:Q", title="Hours"),
             color=alt.condition(
                 brush,
                 alt.Color(
                     'Velocity_Category:N',
-                    title="Velocity Category",
+                    title="Velocity",
                     scale=alt.Scale(
                         domain=color_palette["Velocity_Category"].keys(),
                         range=color_palette["Velocity_Category"].values()
@@ -269,7 +269,7 @@ def generate_velocity_gate_charts(full_merged_df, legend=None):
 
     # Gate bar chart
     if legend:
-        base_gate = alt.Chart(summary_stats_dgl, width=550, height=300).mark_bar().encode(
+        base_gate = alt.Chart(summary_stats_dgl, width=625, height=300).mark_bar().encode(
             x=alt.X("date:T", title="Date"),
             y=alt.Y("total_gate_duration:Q", title="Hours"),
             color=alt.condition(

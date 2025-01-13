@@ -120,24 +120,24 @@ if uploaded_file:
             location_gate[old_full_merged_df['gate'][0]]
         ],
         f"Average Daily Time (Hours) {glc_avg_daily_velocity['Velocity_Category'][0]}":[
-            f"{glc_avg_daily_velocity['time_unit'][0]:.2f}",
-            f"{mid_avg_daily_velocity['time_unit'][0]:.2f}",
-            f"{old_avg_daily_velocity['time_unit'][0]:.2f}",
+            round(glc_avg_daily_velocity['time_unit'][0], 2),
+            round(mid_avg_daily_velocity['time_unit'][0], 2),
+            round(old_avg_daily_velocity['time_unit'][0], 2),
         ],
         f"Average Daily Time (Hours) {glc_avg_daily_velocity['Velocity_Category'][1]}":[
-            f"{glc_avg_daily_velocity['time_unit'][1]:.2f}",
-            f"{mid_avg_daily_velocity['time_unit'][1]:.2f}",
-            f"{old_avg_daily_velocity['time_unit'][1]:.2f}",
+            round(glc_avg_daily_velocity['time_unit'][1], 2),
+            round(mid_avg_daily_velocity['time_unit'][1], 2),
+            round(old_avg_daily_velocity['time_unit'][1], 2),
         ],
         f"Average Streak Duration (Hours) {glc_total_daily_velocity['Velocity_Category'][0]}":[
-            f"{glc_total_daily_velocity['daily_average_time_per_consecutive_group'][0]:.2f}",
-            f"{mid_total_daily_velocity['daily_average_time_per_consecutive_group'][0]:.2f}",
-            f"{old_total_daily_velocity['daily_average_time_per_consecutive_group'][0]:.2f}",
+            round(glc_total_daily_velocity['daily_average_time_per_consecutive_group'][0], 2),
+            round(mid_total_daily_velocity['daily_average_time_per_consecutive_group'][0], 2),
+            round(old_total_daily_velocity['daily_average_time_per_consecutive_group'][0], 2),
         ],
         f"Average Streak Duration (Hours) {glc_total_daily_velocity['Velocity_Category'][1]}":[
-            f"{glc_total_daily_velocity['daily_average_time_per_consecutive_group'][1]:.2f}",
-            f"{mid_total_daily_velocity['daily_average_time_per_consecutive_group'][1]:.2f}",
-            f"{old_total_daily_velocity['daily_average_time_per_consecutive_group'][1]:.2f}",
+            round(glc_total_daily_velocity['daily_average_time_per_consecutive_group'][1], 2),
+            round(mid_total_daily_velocity['daily_average_time_per_consecutive_group'][1], 2),
+            round(old_total_daily_velocity['daily_average_time_per_consecutive_group'][1], 2),
         ]
     }
 
@@ -148,24 +148,24 @@ if uploaded_file:
             old_full_merged_df['gate'][0]
         ],
         f"Average Daily {glc_avg_daily_gate['gate_status'][0]} Time (Hours) for gate":[
-            f"{glc_avg_daily_gate['time_unit'][0]:.2f}",
-            f"{mid_avg_daily_gate['time_unit'][0]:.2f}",
-            f"{old_avg_daily_gate['time_unit'][0]:.2f}",
+            round(glc_avg_daily_gate['time_unit'][0], 2),
+            round(mid_avg_daily_gate['time_unit'][0], 2),
+            round(old_avg_daily_gate['time_unit'][0], 2),
         ],
         f"Average Daily {glc_avg_daily_gate['gate_status'][1]} Time (Hours) for gate":[
-            f"{glc_avg_daily_gate['time_unit'][1]:.2f}",
-            f"{mid_avg_daily_gate['time_unit'][1]:.2f}",
-            f"{old_avg_daily_gate['time_unit'][1]:.2f}",
+            round(glc_avg_daily_gate['time_unit'][1], 2),
+            round(mid_avg_daily_gate['time_unit'][1], 2),
+            round(old_avg_daily_gate['time_unit'][1], 2),
         ],
         f"Average {glc_total_daily_gate['gate_status'][0]} Duration (Hours) Per Streak":[
-            f"{glc_total_daily_gate['daily_average_time_per_consecutive_gate'][0]:.2f}",
-            f"{mid_total_daily_gate['daily_average_time_per_consecutive_gate'][0]:.2f}",
-            f"{old_total_daily_gate['daily_average_time_per_consecutive_gate'][0]:.2f}",
+            round(glc_total_daily_gate['daily_average_time_per_consecutive_gate'][0], 2),
+            round(mid_total_daily_gate['daily_average_time_per_consecutive_gate'][0], 2),
+            round(old_total_daily_gate['daily_average_time_per_consecutive_gate'][0], 2),
         ],
         f"Average {glc_total_daily_gate['gate_status'][1]} Duration (Hours) Per Streak":[
-            f"{glc_total_daily_gate['daily_average_time_per_consecutive_gate'][1]:.2f}",
-            f"{mid_total_daily_gate['daily_average_time_per_consecutive_gate'][1]:.2f}",
-            f"{old_total_daily_gate['daily_average_time_per_consecutive_gate'][1]:.2f}",
+            round(glc_total_daily_gate['daily_average_time_per_consecutive_gate'][1], 2),
+            round(mid_total_daily_gate['daily_average_time_per_consecutive_gate'][1], 2),
+            round(old_total_daily_gate['daily_average_time_per_consecutive_gate'][1], 2),
         ]
     }
     
@@ -175,15 +175,15 @@ if uploaded_file:
             location_gate[mid_full_merged_df['gate'][0]],
             location_gate[old_full_merged_df['gate'][0]]
         ],
-        "Minimum velocity through fish passage":[
-            f"{min(glc_full_merged_df['velocity']):.2f} ft/s",
-            f"{min(mid_full_merged_df['velocity']):.2f} ft/s",
-            f"{min(old_full_merged_df['velocity']):.2f} ft/s",
+        "Minimum velocity through fish passage (ft/s)":[
+            round(min(glc_full_merged_df['velocity']), 2),
+            round(min(mid_full_merged_df['velocity']), 2),
+            round(min(old_full_merged_df['velocity']), 2),
         ],
-        "Maximum velocity through fish passage":[
-            f"{max(glc_full_merged_df['velocity']):.2f} ft/s",
-            f"{max(mid_full_merged_df['velocity']):.2f} ft/s",
-            f"{max(old_full_merged_df['velocity']):.2f} ft/s",
+        "Maximum velocity through fish passage (ft/s)":[
+            round(max(glc_full_merged_df['velocity']), 2),
+            round(max(mid_full_merged_df['velocity']), 2),
+            round(max(old_full_merged_df['velocity']), 2),
         ]
     }
 
@@ -191,12 +191,37 @@ if uploaded_file:
     velocity_summary_df = pd.DataFrame(velocity_summary_data)
     gate_summary_df = pd.DataFrame(gate_summary_data)
     min_max_vel_summary_df = pd.DataFrame(min_max_summary)
+
+
     
     glc_chart = generate_velocity_gate_charts(glc_full_merged_df)
-    old_chart = generate_velocity_gate_charts(old_full_merged_df)
     mid_chart = generate_velocity_gate_charts(mid_full_merged_df)
+    old_chart = generate_velocity_gate_charts(old_full_merged_df, legend=True)
     st.write("### Data Preview")
-    st.dataframe(glc_full_merged_df.head(20).style.format(precision=2).set_table_styles(
+    data_preview_glc, data_preview_mid, data_preview_old = st.tabs(["GLC", "MID", "OLD"])
+    data_preview_glc.dataframe(glc_full_merged_df.head(20).style.format(precision=2).set_table_styles(
+        [{
+            'selector': 'thead th',
+            'props': [('background-color', '#4CAF50'), ('color', 'white'), ('text-align', 'center')]
+        },
+         {
+            'selector': 'tbody tr:hover',
+            'props': [('background-color', '#f5f5f5')]
+        }]
+    ), use_container_width=True)
+
+    data_preview_mid.dataframe(mid_full_merged_df.head(20).style.format(precision=2).set_table_styles(
+        [{
+            'selector': 'thead th',
+            'props': [('background-color', '#4CAF50'), ('color', 'white'), ('text-align', 'center')]
+        },
+         {
+            'selector': 'tbody tr:hover',
+            'props': [('background-color', '#f5f5f5')]
+        }]
+    ), use_container_width=True)
+
+    data_preview_old.dataframe(old_full_merged_df.head(20).style.format(precision=2).set_table_styles(
         [{
             'selector': 'thead th',
             'props': [('background-color', '#4CAF50'), ('color', 'white'), ('text-align', 'center')]
@@ -245,13 +270,13 @@ if uploaded_file:
     viz_1_tab1, viz_1_tab2 = st.tabs(["🗃 Data Summary", "📈 Chart"])
     # viz_1_tab1.write("### Data Summary")
     viz_1_tab1.write(f"##### {velocity_summary_stats_title}")
-    viz_1_tab1.table(velocity_summary_df)   
+    viz_1_tab1.dataframe(velocity_summary_df.style.highlight_max(subset=velocity_summary_df.columns[1:]).format(precision=2))   
     viz_1_tab1.write("")
     viz_1_tab1.write(f"##### {min_max_summary_title}")
-    viz_1_tab1.table(min_max_vel_summary_df)
+    viz_1_tab1.dataframe(min_max_vel_summary_df.style.highlight_max(subset=min_max_vel_summary_df.columns[1:]).format(precision=2))
     viz_1_tab1.write("")
     viz_1_tab1.write(f"##### {gate_summary_stats_title}")
-    viz_1_tab1.table(gate_summary_df)
+    viz_1_tab1.dataframe(gate_summary_df.style.highlight_max(subset=gate_summary_df.columns[1:]).format(precision=2))
     # Altair Visualization
     # st.write('#')    
     # st.altair_chart(combined_chart, use_container_width=True, theme=None)
@@ -349,24 +374,24 @@ if uploaded_file:
             location_gate[old_full_merged_df['gate'][0]]
         ],
         f"Average Daily Time (Hours) {filtered_glc_avg_daily_velocity['Velocity_Category'][0]}":[
-            f"{filtered_glc_avg_daily_velocity['time_unit'][0]:.2f}",
-            f"{filtered_mid_avg_daily_velocity['time_unit'][0]:.2f}",
-            f"{filtered_old_avg_daily_velocity['time_unit'][0]:.2f}",
+            round(filtered_glc_avg_daily_velocity['time_unit'][0], 2),
+            round(filtered_mid_avg_daily_velocity['time_unit'][0], 2),
+            round(filtered_old_avg_daily_velocity['time_unit'][0], 2),
         ],
         f"Average Daily Time (Hours) {filtered_glc_avg_daily_velocity['Velocity_Category'][1]}":[
-            f"{filtered_glc_avg_daily_velocity['time_unit'][1]:.2f}",
-            f"{filtered_mid_avg_daily_velocity['time_unit'][1]:.2f}",
-            f"{filtered_old_avg_daily_velocity['time_unit'][1]:.2f}",
+            round(filtered_glc_avg_daily_velocity['time_unit'][1], 2),
+            round(filtered_mid_avg_daily_velocity['time_unit'][1], 2),
+            round(filtered_old_avg_daily_velocity['time_unit'][1], 2),
         ],
         f"Average Daily {filtered_glc_avg_daily_gate['gate_status'][0]} Time (Hours) for gate":[
-            f"{filtered_glc_avg_daily_gate['time_unit'][0]:.2f}",
-            f"{filtered_mid_avg_daily_gate['time_unit'][0]:.2f}",
-            f"{filtered_old_avg_daily_gate['time_unit'][0]:.2f}",
+            round(filtered_glc_avg_daily_gate['time_unit'][0], 2),
+            round(filtered_mid_avg_daily_gate['time_unit'][0], 2),
+            round(filtered_old_avg_daily_gate['time_unit'][0], 2),
         ],
         f"Average Daily {filtered_glc_avg_daily_gate['gate_status'][1]} Time (Hours) for gate":[
-            f"{filtered_glc_avg_daily_gate['time_unit'][1]:.2f}",
-            f"{filtered_mid_avg_daily_gate['time_unit'][1]:.2f}",
-            f"{filtered_old_avg_daily_gate['time_unit'][1]:.2f}",
+            round(filtered_glc_avg_daily_gate['time_unit'][1], 2),
+            round(filtered_mid_avg_daily_gate['time_unit'][1], 2),
+            round(filtered_old_avg_daily_gate['time_unit'][1], 2),
         ],
 
     }
@@ -377,7 +402,7 @@ if uploaded_file:
     weekly_summary_df = pd.DataFrame(weekly_summary_data)
     # weekly_summary_df.iloc[:, 1:4] = weekly_summary_df[1:].apply(pd.to_numeric)
     viz_2_tab1.write(f"##### {summary_stats_title}")
-    viz_2_tab1.dataframe(weekly_summary_df.style)
+    viz_2_tab1.dataframe(weekly_summary_df.style.highlight_max(subset=weekly_summary_df.columns[1:]).format(precision=2))
     # except:
         # "Missing data to generate summary data for this time period. "
     # #-------------------------------------------------------------------------------------------------------
