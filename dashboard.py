@@ -6,6 +6,7 @@ from figures_functions import *
 #import plotly.express as px
 import datetime
 import numpy as np
+from streamlit_folium import st_folium
 
 #TODO: add border to top barchart
 #TODO: add elevation graph based on week
@@ -232,7 +233,36 @@ if uploaded_file:
         }]
     ), use_container_width=True)
 
-    # st.write("### Interactive Map - Click a Point") 
+    st.write("### Interactive Map - Click a Point") 
+
+    shapefile_paths = [
+        "data-raw/MSS_nodes/dsm2_nodes_newcs_extranodes.shp",
+        "data-raw/fc2024.01_chan/FC2024.01_channels_centerlines.shp"
+    ]
+    nodes = gpd.read_file(shapefile_paths[0])
+    channels = gpd.read_file(shapefile_paths[1])
+    nodes_to_highlight = [112, 176, 69]
+    nodes_filter = nodes[nodes['id'].isin(nodes_to_highlight)]
+    channels_with_numbers = pd.read_csv('data-raw/channel_names_from_h5.csv')
+    channels_with_numbers = channels_with_numbers.rename(columns={'chan_no': 'id'})
+
+    channels_merge = pd.merge(
+        channels,
+        channels_with_numbers,
+        how='left',
+        left_on='id',
+        right_on='id'
+    )
+
+    filtered_channels = channels_merge[channels_merge['id'].isin([211, 79, 134])]
+
+    # Generate the map
+    map_object = create_multi_layer_map(shapefile_paths, filtered_gdf=nodes_filter, filtered_polylines=filtered_channels)
+
+    # Display map in Streamlit
+    st_folium(map_object,
+              width=725)
+    
     # data = pd.DataFrame({
     #     "gates": ["GLC", "OLD", "MID"],
     #     "latitude": [34.07105502661072, 34.055021339285005, 34.07412241104673],
@@ -400,14 +430,25 @@ if uploaded_file:
         ],
 
     }
-
+    # def color_coding(row):
+    #     if row['Average Daily Time (Hours) Over 8ft/s'] > 15:
+    #         return ['background-color: red'] * len(row)
+    #     else:
+    #         return ['background-color: green'] * len(row)
 # Create a DataFrame
     viz_2_tab1, viz_2_tab2 = st.tabs(["🗃 Data Summary", "📈 Chart"])
     # try:
     weekly_summary_df = pd.DataFrame(weekly_summary_data)
+    # styled_df = weekly_summary_df.style.apply(color_coding, axis=1)
+    # styled_html = styled_df.to_html()
+
     # weekly_summary_df.iloc[:, 1:4] = weekly_summary_df[1:].apply(pd.to_numeric)
     viz_2_tab1.write(f"##### {summary_stats_title}")
     # .set_properties(**{'font-weight': 'bold'}, subset=df.columns
+    # st.markdown(
+    #     styled_html,
+    #     unsafe_allow_html=True
+    # )
     viz_2_tab1.dataframe(weekly_summary_df.style.highlight_max(subset=weekly_summary_df.columns[1:],
                                                                color = "#ffffc5").format(precision=2))
     # except:
