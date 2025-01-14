@@ -270,13 +270,18 @@ if uploaded_file:
     viz_1_tab1, viz_1_tab2 = st.tabs(["🗃 Data Summary", "📈 Chart"])
     # viz_1_tab1.write("### Data Summary")
     viz_1_tab1.write(f"##### {velocity_summary_stats_title}")
-    viz_1_tab1.dataframe(velocity_summary_df.style.highlight_max(subset=velocity_summary_df.columns[1:]).format(precision=2))   
+    viz_1_tab1.dataframe(velocity_summary_df.style.highlight_max(
+        subset=velocity_summary_df.columns[1:],
+        color = "#ffffc5").format(precision=2))   
     viz_1_tab1.write("")
     viz_1_tab1.write(f"##### {min_max_summary_title}")
-    viz_1_tab1.dataframe(min_max_vel_summary_df.style.highlight_max(subset=min_max_vel_summary_df.columns[1:]).format(precision=2))
+    viz_1_tab1.dataframe(min_max_vel_summary_df.style.highlight_max(
+        subset=min_max_vel_summary_df.columns[1:],
+        color = "#ffffc5").format(precision=2))
     viz_1_tab1.write("")
     viz_1_tab1.write(f"##### {gate_summary_stats_title}")
-    viz_1_tab1.dataframe(gate_summary_df.style.highlight_max(subset=gate_summary_df.columns[1:]).format(precision=2))
+    viz_1_tab1.dataframe(gate_summary_df.style.highlight_max(subset=gate_summary_df.columns[1:],
+                                                             color = "#ffffc5").format(precision=2))
     # Altair Visualization
     # st.write('#')    
     # st.altair_chart(combined_chart, use_container_width=True, theme=None)
@@ -402,7 +407,9 @@ if uploaded_file:
     weekly_summary_df = pd.DataFrame(weekly_summary_data)
     # weekly_summary_df.iloc[:, 1:4] = weekly_summary_df[1:].apply(pd.to_numeric)
     viz_2_tab1.write(f"##### {summary_stats_title}")
-    viz_2_tab1.dataframe(weekly_summary_df.style.highlight_max(subset=weekly_summary_df.columns[1:]).format(precision=2))
+    # .set_properties(**{'font-weight': 'bold'}, subset=df.columns
+    viz_2_tab1.dataframe(weekly_summary_df.style.highlight_max(subset=weekly_summary_df.columns[1:],
+                                                               color = "#ffffc5").format(precision=2))
     # except:
         # "Missing data to generate summary data for this time period. "
     # #-------------------------------------------------------------------------------------------------------

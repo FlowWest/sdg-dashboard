@@ -324,7 +324,14 @@ def generate_velocity_gate_charts(full_merged_df, legend=None):
     combined_bar_charts = alt.vconcat(
         gate_bar_chart,
         vel_bar_chart
-    ).resolve_scale(color='independent').properties(title= f"Model: {model}")
+    ).resolve_scale(
+        color='independent'
+    ).properties(
+        title= f"Model: {model}"
+    ).configure_legend(
+        orient='right',  
+        offset=5,       
+    )
 
     return combined_bar_charts
 
@@ -354,13 +361,18 @@ def generate_zoomed_velocity_charts(filtered_merged_df):
     )
 
     closed_gates = filtered_merged_df[['gate_min_datetime', 'gate_max_datetime', 'gate_status']].drop_duplicates().reset_index(drop=True)
+    color_scale = alt.Scale(
+        domain=["Closed"],
+        range=[color_palette["gate_status"]["Closed"]]
+    )
     area_gate_true = alt.Chart(closed_gates).mark_rect(
         color='orange'
     ).encode(
         x='gate_min_datetime:T',
         x2='gate_max_datetime:T',
         opacity=alt.value(0.2),
-        color=alt.value(color_palette["gate_status"]["Closed"]),
+        color = alt.Color('gate_status:N', scale=color_scale, legend=alt.Legend(title="Gate Status"))
+        # color=alt.value(color_palette["gate_status"]["Closed"]),
         # color=alt.condition(interval, alt.value('orange'), alt.value('lightgray'))
     ).transform_filter(
         alt.datum.gate_status == "Closed"
@@ -462,7 +474,10 @@ def generate_zoomed_velocity_charts(filtered_merged_df):
         layered_chart,
         # velocity
         text_summary
-    ).properties(title= f"Model: {model}")
+    ).properties(title= f"Model: {model}").configure_legend(
+        orient='right',  
+        offset=10,       
+    )
 
     # return (layered_chart, text_summary)
     return combined_chart
