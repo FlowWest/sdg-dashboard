@@ -6,7 +6,7 @@ from figures_functions import *
 #import plotly.express as px
 import datetime
 import numpy as np
-from streamlit_folium import st_folium
+from streamlit_folium import st_folium, folium_static
 
 #TODO: add border to top barchart
 #TODO: add elevation graph based on week
@@ -233,7 +233,7 @@ if uploaded_file:
         }]
     ), use_container_width=True)
 
-    st.write("### Interactive Map - Click a Point") 
+    st.write("### Gate and Channel Locations") 
 
     shapefile_paths = [
         "data-raw/MSS_nodes/dsm2_nodes_newcs_extranodes.shp",
@@ -257,41 +257,13 @@ if uploaded_file:
     filtered_channels = channels_merge[channels_merge['id'].isin([211, 79, 134])]
 
     # Generate the map
-    map_object = create_multi_layer_map(shapefile_paths, filtered_gdf=nodes_filter, filtered_polylines=filtered_channels)
-
-    # Display map in Streamlit
-    st_folium(map_object,
-              width=725)
-    
-    # data = pd.DataFrame({
-    #     "gates": ["GLC", "OLD", "MID"],
-    #     "latitude": [34.07105502661072, 34.055021339285005, 34.07412241104673],
-    #     "longitude": [-118.33807459509656, -118.25021296787665, -118.25840626969342],
-    #     # "value": [100, 200, 300]
-    # })
-
-    # # Create an interactive Plotly map
-    # fig_map = px.scatter_mapbox(
-    #     data,
-    #     lat="latitude",
-    #     lon="longitude",
-    #     size=[50, 50, 50],
-    #     color="gates",
-    #     size_max=100,
-    #     zoom=12,
-    #     mapbox_style="carto-positron"  # Map style
-    # )
-
-    # event = st.plotly_chart(
-    #     fig_map,
-    #     on_select="rerun",
-    #     selection_mode=["box", "points"],
-    #     key="map_data",  # Store selection in session_state
-    # )
-    # event
-    # st.write(st.session_state.map_data)
-
-
+    gdfs, all_centroids= process_shapefiles(shapefile_paths)
+    nodes_filter, filtered_channels = transform_and_filter_geometries(nodes_filter, filtered_channels)
+    avg_lat, avg_lon = calculate_avg_lat_long(all_centroids)
+    map_object = create_multi_layer_map(gdfs=gdfs, avg_lat=avg_lat, avg_lon=avg_lon, filtered_gdf=nodes_filter, filtered_polylines=filtered_channels)
+    col1, col2, col3 = st.columns([1, 3, 1])
+    with col2:
+        st_map = st_folium(map_object, width=1200, height=500)
 
 # Display the selected data (If any)
     # st.dataframe(st.session_state.map_data)
@@ -493,10 +465,31 @@ if uploaded_file:
     col1, col2, col3 = viz_2_tab2.columns([3, 3, 3], gap="small")
     with col1:
         st.altair_chart(glc_zoomed_hydro_chart, use_container_width=True, theme=None)
+        csv = convert_df(glc_hydro_df)
+        st.download_button(
+            label="Download GLC Hydro Data",
+            data=csv,
+            file_name="glc_hydro_df.csv",
+            mime="text/csv",
+        )
     with col2:
         st.altair_chart(mid_zoomed_hydro_chart, use_container_width=True, theme=None)
+        csv = convert_df(mid_hydro_df)
+        st.download_button(
+            label="Download MID Hydro Data",
+            data=csv,
+            file_name="mid_hydro_df.csv",
+            mime="text/csv",
+        )
     with col3:
         st.altair_chart(old_zoomed_hydro_chart, use_container_width=True, theme=None)
+        csv = convert_df(old_hydro_df)
+        st.download_button(
+            label="Download OLD Hydro Data",
+            data=csv,
+            file_name="OLD_hydro_df.csv",
+            mime="text/csv",
+        )
     # st.altair_chart(combined_chart, use_container_width=False, theme=None)
     # st.altair_chart(combined_elev_chart, use_container_width=False, theme=None)
     # st.altair_chart(joint_chart, use_container_width=False, theme=None)

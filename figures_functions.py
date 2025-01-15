@@ -5,6 +5,7 @@ import numpy as np
 import streamlit as st
 import geopandas as gpd
 import folium
+from streamlit_folium import st_folium
 
 
 location_gate = {
@@ -486,116 +487,113 @@ def generate_zoomed_velocity_charts(filtered_merged_df):
     return combined_chart
 
 # @st.cache_data
-def create_multi_layer_map(shapefile_paths, filtered_gdf=None, filtered_polylines=None):
-    # Initialize a list to store valid GeoDataFrames and their centroids
+def process_shapefiles(shapefile_paths):
     gdfs = []
-    all_centroids = []
 
     for path in shapefile_paths:
         # Read shapefile
+        all_centroids=[]
         gdf = gpd.read_file(path)
 
         # Ensure the CRS is EPSG:4326
         if gdf.crs != "EPSG:4326":
             gdf = gdf.to_crs("EPSG:4326")
-
+        
         # Remove rows with invalid or missing geometries
         gdf = gdf[~gdf.geometry.isna()]
-
-        # Compute the centroid in EPSG:4326 (no need for reprojection)
+        nodes_to_highlight = [112, 176, 69]
+        gdf = gdf[gdf['id'].isin(nodes_to_highlight)]
         centroid = gdf.geometry.centroid
         center = [centroid.y.mean(), centroid.x.mean()]
 
-        # Append to the list
         gdfs.append((gdf, center))
         all_centroids.append(center)
+    
+    return gdfs, all_centroids
 
-    # Check and transform filtered_gdf to EPSG:4326 if provided
-    if filtered_gdf is not None:
-        if filtered_gdf.crs != "EPSG:4326":
-            filtered_gdf = filtered_gdf.to_crs("EPSG:4326")
-        filtered_gdf = filtered_gdf[~filtered_gdf.geometry.isna()]  # Remove invalid geometries
+def transform_and_filter_geometries(nodes_filter, filtered_channels):
+    """
+    Transforms the CRS of nodes and channels to EPSG:4326, removes invalid geometries
 
-    # Check and transform filtered_polylines to EPSG:4326 if provided
-    if filtered_polylines is not None:
-        if filtered_polylines.crs != "EPSG:4326":
-            filtered_polylines = filtered_polylines.to_crs("EPSG:4326")
-        filtered_polylines = filtered_polylines[~filtered_polylines.geometry.isna()]  # Remove invalid geometries
+    Parameters:
+        nodes_filter (GeoDataFrame): The GeoDataFrame containing node geometries.
+        filtered_channels (GeoDataFrame): The GeoDataFrame containing channel geometries.
 
-    # Calculate map center based on all layers
+    Returns:
+        tuple: Transformed nodes_filter (GeoDataFrame), transformed filtered_channels (GeoDataFrame),
+               average latitude, average longitude.
+    """
+    # Transform nodes_filter CRS to EPSG:4326 if it's not already
+    if nodes_filter.crs != "EPSG:4326":
+        nodes_filter = nodes_filter.to_crs("EPSG:4326")
+    nodes_filter = nodes_filter[~nodes_filter.geometry.isna()]  # Remove invalid geometries
+
+    # Transform filtered_channels CRS to EPSG:4326 if it's not already
+    if filtered_channels.crs != "EPSG:4326":
+        filtered_channels = filtered_channels.to_crs("EPSG:4326")
+    filtered_channels = filtered_channels[~filtered_channels.geometry.isna()]  # Remove invalid geometries
+    
+    return nodes_filter, filtered_channels 
+
+def calculate_avg_lat_long(all_centroids):
     avg_lat = sum([c[0] for c in all_centroids]) / len(all_centroids)
     avg_lon = sum([c[1] for c in all_centroids]) / len(all_centroids)
+    return avg_lat, avg_lon
 
-    # Create a Folium map centered on the average centroid
-    m = folium.Map(location=[avg_lat, avg_lon], zoom_start=10)
+def create_multi_layer_map(gdfs, avg_lon, avg_lat, filtered_gdf=None, filtered_polylines=None):
+    # Create the Folium map
+    if 'map' not in st.session_state or st.session_state.map is None:
+        m = folium.Map(location=[avg_lat, avg_lon], zoom_start=11)
 
-    # Add each shapefile as a separate layer to the map
-    # for idx, (gdf, _) in enumerate(gdfs):
-    #     feature_group = folium.FeatureGroup(name=f"Layer {idx + 1}: {shapefile_paths[idx].split('/')[-1]}")
-    #     for _, row in gdf.iterrows():
-    #         if row.geometry.type == 'Point':
-    #             # Add points as markers
-    #             folium.Marker(
-    #                 location=[row.geometry.y, row.geometry.x],
-    #                 popup=f"ID: {row.get('id', 'N/A')}<br>Name: {row.get('name', 'N/A')}",
-    #                 icon=folium.Icon(color='blue', icon="circle")
-    #             ).add_to(feature_group)
-    #         elif row.geometry.type == 'LineString':
-    #             # Add polylines
-    #             coordinates = [(point[1], point[0]) for point in row.geometry.coords]  # Convert to (lat, lon)
-    #             popup_content = f"""
-    #             id = {row.get('id', 'N/A')}<br>
-    #             name = {row.get('name', 'N/A')}<br>
-    #             distance = {row.get('distance', 'N/A')}<br>
-    #             variable = {row.get('variable', 'N/A')}<br>
-    #             interval = {row.get('interval', 'N/A')}<br>
-    #             period_op = {row.get('period_op', 'N/A')}
-    #             """
-    #             folium.PolyLine(
-    #                 locations=coordinates,
-    #                 color='darkgreen',
-    #                 popup=folium.Popup(popup_content, max_width=300)
-    #             ).add_to(feature_group)
-    #     feature_group.add_to(m)
+        if filtered_gdf is not None:
+            for _, row in filtered_gdf.iterrows():
+                # Define the popup content for the markers
+                popup_content = f"ID: {row['id']}"
 
-    # If filtered_gdf is provided, add the filtered points in red
-    if filtered_gdf is not None:
-        filtered_points_group = folium.FeatureGroup(name="Filtered Points")
-        for _, row in filtered_gdf.iterrows():
-            if row.geometry.type == 'Point':  # Ensure geometry is a Point
+                # Define tooltip content for the marker (appears on hover)
+                tooltip_content = f"ID: {row['id']}"
+
+                # Add the marker with a popup, icon, and tooltip
                 folium.Marker(
-                    location=[row.geometry.y, row.geometry.x], 
-                    popup=f"ID: {row.get('id', 'N/A')}", 
-                    icon=folium.Icon(color='red', icon="circle")
-                ).add_to(filtered_points_group)
-        filtered_points_group.add_to(m)
+                    location=[row.geometry.y, row.geometry.x],  # Point geometry: extract lat/lon
+                    popup=popup_content,  # Popup content
+                    icon=folium.Icon(color='red', icon="circle"),  # Red marker icon
+                    tooltip=tooltip_content  # Tooltip on hover
+                ).add_to(m)
 
-    # If filtered_polylines is provided, add the filtered polylines as a separate layer
-    if filtered_polylines is not None:
-        filtered_lines_group = folium.FeatureGroup(name="Filtered Polylines")
-        for _, row in filtered_polylines.iterrows():
-            if row.geometry.type == 'LineString':
-                coordinates = [(point[1], point[0]) for point in row.geometry.coords]  # Convert to (lat, lon)
-                popup_content = f"""
-                id = {row.get('id', 'N/A')}<br>
-                name = {row.get('name', 'N/A')}<br>
-                distance = {row.get('distance', 'N/A')}<br>
-                variable = {row.get('variable', 'N/A')}<br>
-                interval = {row.get('interval', 'N/A')}<br>
-                period_op = {row.get('period_op', 'N/A')}
+    # Loop through the filtered polylines
+        if filtered_polylines is not None:
+            for _, row in filtered_polylines.iterrows():
+                # Define tooltip content
+                tooltip_content = f"""
+                id: {row['id']}<br>
+                name: {row.get('name', 'N/A')}<br>
                 """
+
+                # Define popup content
+                popup_content = f"""
+                id: {row['id']}<br>
+                name: {row.get('name', 'N/A')}<br>
+                distance: {row.get('distance', 'N/A')}<br>
+                variable: {row.get('variable', 'N/A')}<br>
+                interval: {row.get('interval', 'N/A')}<br>
+                period_op: {row.get('period_op', 'N/A')}
+                """
+
+
+                # Extract coordinates for the LineString
+                coordinates = [(point[1], point[0]) for point in row.geometry.coords]  # Convert (x, y) to (lat, lon)
+
+                # Add the LineString to the map with a Tooltip
                 folium.PolyLine(
                     locations=coordinates,
-                    color='blue',  # Distinct color for filtered polylines
+                    color='darkgreen',
+                    tooltip=folium.Tooltip(tooltip_content),
                     popup=folium.Popup(popup_content, max_width=300)
-                ).add_to(filtered_lines_group)
-        filtered_lines_group.add_to(m)
+                ).add_to(m)
+        st.session_state.map = m
 
-    # Add layer control
-    folium.LayerControl().add_to(m)
-
-    # Display the map
-    return m
+    return st.session_state.map
 
 def generate_water_level_chart(filtered_hydro_df, filtered_merged_df):
 # @st.cache_data
@@ -603,8 +601,8 @@ def generate_water_level_chart(filtered_hydro_df, filtered_merged_df):
         "Velocity_Category": {"Over 8ft/s": "#a6cee3", "Under 8ft/s": "#1f78b4"},  # Blues
         "gate_status": {"Closed": "#b2df8a", "Open": "#33a02c"}  # Greens
     }
-    gate = filtered_hydro_df['gate'].unique()[0]
-    model = filtered_hydro_df['scenario'].unique()[0]
+    gate = filtered_merged_df['gate'].unique()[0]
+    model = filtered_merged_df['model'].unique()[0]
     shared_y_scale = alt.Scale(domain=[0, 8])
     interval = alt.selection_interval(encodings=['x'],
                                   mark=alt.BrushConfig(fill='blue'))
@@ -719,5 +717,5 @@ def generate_water_level_chart(filtered_hydro_df, filtered_merged_df):
                                   rules_elev,
                                   area_gate_true,
                                   text
-        ).properties(width=700, height=400, title= f"Model: {model}")
+        ).properties(width=700, height=400, title= f"Modeled Water Level at {gate}")
     return min_stage_chart
