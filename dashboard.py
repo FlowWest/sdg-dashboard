@@ -6,6 +6,7 @@ from figures_functions import *
 #import plotly.express as px
 import datetime
 import numpy as np
+from streamlit_folium import st_folium, folium_static
 
 #TODO: add border to top barchart
 #TODO: add elevation graph based on week
@@ -120,24 +121,24 @@ if uploaded_file:
             location_gate[old_full_merged_df['gate'][0]]
         ],
         f"Average Daily Time (Hours) {glc_avg_daily_velocity['Velocity_Category'][0]}":[
-            f"{glc_avg_daily_velocity['time_unit'][0]:.2f}",
-            f"{mid_avg_daily_velocity['time_unit'][0]:.2f}",
-            f"{old_avg_daily_velocity['time_unit'][0]:.2f}",
+            round(glc_avg_daily_velocity['time_unit'][0], 2),
+            round(mid_avg_daily_velocity['time_unit'][0], 2),
+            round(old_avg_daily_velocity['time_unit'][0], 2),
         ],
         f"Average Daily Time (Hours) {glc_avg_daily_velocity['Velocity_Category'][1]}":[
-            f"{glc_avg_daily_velocity['time_unit'][1]:.2f}",
-            f"{mid_avg_daily_velocity['time_unit'][1]:.2f}",
-            f"{old_avg_daily_velocity['time_unit'][1]:.2f}",
+            round(glc_avg_daily_velocity['time_unit'][1], 2),
+            round(mid_avg_daily_velocity['time_unit'][1], 2),
+            round(old_avg_daily_velocity['time_unit'][1], 2),
         ],
         f"Average Streak Duration (Hours) {glc_total_daily_velocity['Velocity_Category'][0]}":[
-            f"{glc_total_daily_velocity['daily_average_time_per_consecutive_group'][0]:.2f}",
-            f"{mid_total_daily_velocity['daily_average_time_per_consecutive_group'][0]:.2f}",
-            f"{old_total_daily_velocity['daily_average_time_per_consecutive_group'][0]:.2f}",
+            round(glc_total_daily_velocity['daily_average_time_per_consecutive_group'][0], 2),
+            round(mid_total_daily_velocity['daily_average_time_per_consecutive_group'][0], 2),
+            round(old_total_daily_velocity['daily_average_time_per_consecutive_group'][0], 2),
         ],
         f"Average Streak Duration (Hours) {glc_total_daily_velocity['Velocity_Category'][1]}":[
-            f"{glc_total_daily_velocity['daily_average_time_per_consecutive_group'][1]:.2f}",
-            f"{mid_total_daily_velocity['daily_average_time_per_consecutive_group'][1]:.2f}",
-            f"{old_total_daily_velocity['daily_average_time_per_consecutive_group'][1]:.2f}",
+            round(glc_total_daily_velocity['daily_average_time_per_consecutive_group'][1], 2),
+            round(mid_total_daily_velocity['daily_average_time_per_consecutive_group'][1], 2),
+            round(old_total_daily_velocity['daily_average_time_per_consecutive_group'][1], 2),
         ]
     }
 
@@ -148,24 +149,24 @@ if uploaded_file:
             old_full_merged_df['gate'][0]
         ],
         f"Average Daily {glc_avg_daily_gate['gate_status'][0]} Time (Hours) for gate":[
-            f"{glc_avg_daily_gate['time_unit'][0]:.2f}",
-            f"{mid_avg_daily_gate['time_unit'][0]:.2f}",
-            f"{old_avg_daily_gate['time_unit'][0]:.2f}",
+            round(glc_avg_daily_gate['time_unit'][0], 2),
+            round(mid_avg_daily_gate['time_unit'][0], 2),
+            round(old_avg_daily_gate['time_unit'][0], 2),
         ],
         f"Average Daily {glc_avg_daily_gate['gate_status'][1]} Time (Hours) for gate":[
-            f"{glc_avg_daily_gate['time_unit'][1]:.2f}",
-            f"{mid_avg_daily_gate['time_unit'][1]:.2f}",
-            f"{old_avg_daily_gate['time_unit'][1]:.2f}",
+            round(glc_avg_daily_gate['time_unit'][1], 2),
+            round(mid_avg_daily_gate['time_unit'][1], 2),
+            round(old_avg_daily_gate['time_unit'][1], 2),
         ],
         f"Average {glc_total_daily_gate['gate_status'][0]} Duration (Hours) Per Streak":[
-            f"{glc_total_daily_gate['daily_average_time_per_consecutive_gate'][0]:.2f}",
-            f"{mid_total_daily_gate['daily_average_time_per_consecutive_gate'][0]:.2f}",
-            f"{old_total_daily_gate['daily_average_time_per_consecutive_gate'][0]:.2f}",
+            round(glc_total_daily_gate['daily_average_time_per_consecutive_gate'][0], 2),
+            round(mid_total_daily_gate['daily_average_time_per_consecutive_gate'][0], 2),
+            round(old_total_daily_gate['daily_average_time_per_consecutive_gate'][0], 2),
         ],
         f"Average {glc_total_daily_gate['gate_status'][1]} Duration (Hours) Per Streak":[
-            f"{glc_total_daily_gate['daily_average_time_per_consecutive_gate'][1]:.2f}",
-            f"{mid_total_daily_gate['daily_average_time_per_consecutive_gate'][1]:.2f}",
-            f"{old_total_daily_gate['daily_average_time_per_consecutive_gate'][1]:.2f}",
+            round(glc_total_daily_gate['daily_average_time_per_consecutive_gate'][1], 2),
+            round(mid_total_daily_gate['daily_average_time_per_consecutive_gate'][1], 2),
+            round(old_total_daily_gate['daily_average_time_per_consecutive_gate'][1], 2),
         ]
     }
     
@@ -175,15 +176,15 @@ if uploaded_file:
             location_gate[mid_full_merged_df['gate'][0]],
             location_gate[old_full_merged_df['gate'][0]]
         ],
-        "Minimum velocity through fish passage":[
-            f"{min(glc_full_merged_df['velocity']):.2f} ft/s",
-            f"{min(mid_full_merged_df['velocity']):.2f} ft/s",
-            f"{min(old_full_merged_df['velocity']):.2f} ft/s",
+        "Minimum velocity through fish passage (ft/s)":[
+            round(min(glc_full_merged_df['velocity']), 2),
+            round(min(mid_full_merged_df['velocity']), 2),
+            round(min(old_full_merged_df['velocity']), 2),
         ],
-        "Maximum velocity through fish passage":[
-            f"{max(glc_full_merged_df['velocity']):.2f} ft/s",
-            f"{max(mid_full_merged_df['velocity']):.2f} ft/s",
-            f"{max(old_full_merged_df['velocity']):.2f} ft/s",
+        "Maximum velocity through fish passage (ft/s)":[
+            round(max(glc_full_merged_df['velocity']), 2),
+            round(max(mid_full_merged_df['velocity']), 2),
+            round(max(old_full_merged_df['velocity']), 2),
         ]
     }
 
@@ -191,12 +192,15 @@ if uploaded_file:
     velocity_summary_df = pd.DataFrame(velocity_summary_data)
     gate_summary_df = pd.DataFrame(gate_summary_data)
     min_max_vel_summary_df = pd.DataFrame(min_max_summary)
+
+
     
     glc_chart = generate_velocity_gate_charts(glc_full_merged_df)
-    old_chart = generate_velocity_gate_charts(old_full_merged_df)
     mid_chart = generate_velocity_gate_charts(mid_full_merged_df)
+    old_chart = generate_velocity_gate_charts(old_full_merged_df, legend=True)
     st.write("### Data Preview")
-    st.dataframe(glc_full_merged_df.head(20).style.format(precision=2).set_table_styles(
+    data_preview_glc, data_preview_mid, data_preview_old = st.tabs(["GLC", "MID", "OLD"])
+    data_preview_glc.dataframe(glc_full_merged_df.head(20).style.format(precision=2).set_table_styles(
         [{
             'selector': 'thead th',
             'props': [('background-color', '#4CAF50'), ('color', 'white'), ('text-align', 'center')]
@@ -207,36 +211,59 @@ if uploaded_file:
         }]
     ), use_container_width=True)
 
-    # st.write("### Interactive Map - Click a Point") 
-    # data = pd.DataFrame({
-    #     "gates": ["GLC", "OLD", "MID"],
-    #     "latitude": [34.07105502661072, 34.055021339285005, 34.07412241104673],
-    #     "longitude": [-118.33807459509656, -118.25021296787665, -118.25840626969342],
-    #     # "value": [100, 200, 300]
-    # })
+    data_preview_mid.dataframe(mid_full_merged_df.head(20).style.format(precision=2).set_table_styles(
+        [{
+            'selector': 'thead th',
+            'props': [('background-color', '#4CAF50'), ('color', 'white'), ('text-align', 'center')]
+        },
+         {
+            'selector': 'tbody tr:hover',
+            'props': [('background-color', '#f5f5f5')]
+        }]
+    ), use_container_width=True)
 
-    # # Create an interactive Plotly map
-    # fig_map = px.scatter_mapbox(
-    #     data,
-    #     lat="latitude",
-    #     lon="longitude",
-    #     size=[50, 50, 50],
-    #     color="gates",
-    #     size_max=100,
-    #     zoom=12,
-    #     mapbox_style="carto-positron"  # Map style
-    # )
+    data_preview_old.dataframe(old_full_merged_df.head(20).style.format(precision=2).set_table_styles(
+        [{
+            'selector': 'thead th',
+            'props': [('background-color', '#4CAF50'), ('color', 'white'), ('text-align', 'center')]
+        },
+         {
+            'selector': 'tbody tr:hover',
+            'props': [('background-color', '#f5f5f5')]
+        }]
+    ), use_container_width=True)
 
-    # event = st.plotly_chart(
-    #     fig_map,
-    #     on_select="rerun",
-    #     selection_mode=["box", "points"],
-    #     key="map_data",  # Store selection in session_state
-    # )
-    # event
-    # st.write(st.session_state.map_data)
+    st.write("### Gate and Channel Locations") 
 
+    shapefile_paths = [
+        "data-raw/MSS_nodes/dsm2_nodes_newcs_extranodes.shp",
+        "data-raw/fc2024.01_chan/FC2024.01_channels_centerlines.shp"
+    ]
+    nodes = gpd.read_file(shapefile_paths[0])
+    channels = gpd.read_file(shapefile_paths[1])
+    nodes_to_highlight = [112, 176, 69]
+    nodes_filter = nodes[nodes['id'].isin(nodes_to_highlight)]
+    channels_with_numbers = pd.read_csv('data-raw/channel_names_from_h5.csv')
+    channels_with_numbers = channels_with_numbers.rename(columns={'chan_no': 'id'})
 
+    channels_merge = pd.merge(
+        channels,
+        channels_with_numbers,
+        how='left',
+        left_on='id',
+        right_on='id'
+    )
+
+    filtered_channels = channels_merge[channels_merge['id'].isin([211, 79, 134])]
+
+    # Generate the map
+    gdfs, all_centroids= process_shapefiles(shapefile_paths)
+    nodes_filter, filtered_channels = transform_and_filter_geometries(nodes_filter, filtered_channels)
+    avg_lat, avg_lon = calculate_avg_lat_long(all_centroids)
+    map_object = create_multi_layer_map(gdfs=gdfs, avg_lat=avg_lat, avg_lon=avg_lon, filtered_gdf=nodes_filter, filtered_polylines=filtered_channels)
+    col1, col2, col3 = st.columns([1, 3, 1])
+    with col2:
+        st_map = st_folium(map_object, width=1200, height=500)
 
 # Display the selected data (If any)
     # st.dataframe(st.session_state.map_data)
@@ -245,13 +272,18 @@ if uploaded_file:
     viz_1_tab1, viz_1_tab2 = st.tabs(["🗃 Data Summary", "📈 Chart"])
     # viz_1_tab1.write("### Data Summary")
     viz_1_tab1.write(f"##### {velocity_summary_stats_title}")
-    viz_1_tab1.table(velocity_summary_df)   
+    viz_1_tab1.dataframe(velocity_summary_df.style.highlight_max(
+        subset=velocity_summary_df.columns[1:],
+        color = "#ffffc5").format(precision=2))   
     viz_1_tab1.write("")
     viz_1_tab1.write(f"##### {min_max_summary_title}")
-    viz_1_tab1.table(min_max_vel_summary_df)
+    viz_1_tab1.dataframe(min_max_vel_summary_df.style.highlight_max(
+        subset=min_max_vel_summary_df.columns[1:],
+        color = "#ffffc5").format(precision=2))
     viz_1_tab1.write("")
     viz_1_tab1.write(f"##### {gate_summary_stats_title}")
-    viz_1_tab1.table(gate_summary_df)
+    viz_1_tab1.dataframe(gate_summary_df.style.highlight_max(subset=gate_summary_df.columns[1:],
+                                                             color = "#ffffc5").format(precision=2))
     # Altair Visualization
     # st.write('#')    
     # st.altair_chart(combined_chart, use_container_width=True, theme=None)
@@ -349,35 +381,48 @@ if uploaded_file:
             location_gate[old_full_merged_df['gate'][0]]
         ],
         f"Average Daily Time (Hours) {filtered_glc_avg_daily_velocity['Velocity_Category'][0]}":[
-            f"{filtered_glc_avg_daily_velocity['time_unit'][0]:.2f}",
-            f"{filtered_mid_avg_daily_velocity['time_unit'][0]:.2f}",
-            f"{filtered_old_avg_daily_velocity['time_unit'][0]:.2f}",
+            round(filtered_glc_avg_daily_velocity['time_unit'][0], 2),
+            round(filtered_mid_avg_daily_velocity['time_unit'][0], 2),
+            round(filtered_old_avg_daily_velocity['time_unit'][0], 2),
         ],
         f"Average Daily Time (Hours) {filtered_glc_avg_daily_velocity['Velocity_Category'][1]}":[
-            f"{filtered_glc_avg_daily_velocity['time_unit'][1]:.2f}",
-            f"{filtered_mid_avg_daily_velocity['time_unit'][1]:.2f}",
-            f"{filtered_old_avg_daily_velocity['time_unit'][1]:.2f}",
+            round(filtered_glc_avg_daily_velocity['time_unit'][1], 2),
+            round(filtered_mid_avg_daily_velocity['time_unit'][1], 2),
+            round(filtered_old_avg_daily_velocity['time_unit'][1], 2),
         ],
         f"Average Daily {filtered_glc_avg_daily_gate['gate_status'][0]} Time (Hours) for gate":[
-            f"{filtered_glc_avg_daily_gate['time_unit'][0]:.2f}",
-            f"{filtered_mid_avg_daily_gate['time_unit'][0]:.2f}",
-            f"{filtered_old_avg_daily_gate['time_unit'][0]:.2f}",
+            round(filtered_glc_avg_daily_gate['time_unit'][0], 2),
+            round(filtered_mid_avg_daily_gate['time_unit'][0], 2),
+            round(filtered_old_avg_daily_gate['time_unit'][0], 2),
         ],
         f"Average Daily {filtered_glc_avg_daily_gate['gate_status'][1]} Time (Hours) for gate":[
-            f"{filtered_glc_avg_daily_gate['time_unit'][1]:.2f}",
-            f"{filtered_mid_avg_daily_gate['time_unit'][1]:.2f}",
-            f"{filtered_old_avg_daily_gate['time_unit'][1]:.2f}",
+            round(filtered_glc_avg_daily_gate['time_unit'][1], 2),
+            round(filtered_mid_avg_daily_gate['time_unit'][1], 2),
+            round(filtered_old_avg_daily_gate['time_unit'][1], 2),
         ],
 
     }
-
+    # def color_coding(row):
+    #     if row['Average Daily Time (Hours) Over 8ft/s'] > 15:
+    #         return ['background-color: red'] * len(row)
+    #     else:
+    #         return ['background-color: green'] * len(row)
 # Create a DataFrame
     viz_2_tab1, viz_2_tab2 = st.tabs(["🗃 Data Summary", "📈 Chart"])
     # try:
     weekly_summary_df = pd.DataFrame(weekly_summary_data)
+    # styled_df = weekly_summary_df.style.apply(color_coding, axis=1)
+    # styled_html = styled_df.to_html()
+
     # weekly_summary_df.iloc[:, 1:4] = weekly_summary_df[1:].apply(pd.to_numeric)
     viz_2_tab1.write(f"##### {summary_stats_title}")
-    viz_2_tab1.dataframe(weekly_summary_df.style)
+    # .set_properties(**{'font-weight': 'bold'}, subset=df.columns
+    # st.markdown(
+    #     styled_html,
+    #     unsafe_allow_html=True
+    # )
+    viz_2_tab1.dataframe(weekly_summary_df.style.highlight_max(subset=weekly_summary_df.columns[1:],
+                                                               color = "#ffffc5").format(precision=2))
     # except:
         # "Missing data to generate summary data for this time period. "
     # #-------------------------------------------------------------------------------------------------------
@@ -420,10 +465,31 @@ if uploaded_file:
     col1, col2, col3 = viz_2_tab2.columns([3, 3, 3], gap="small")
     with col1:
         st.altair_chart(glc_zoomed_hydro_chart, use_container_width=True, theme=None)
+        csv = convert_df(glc_hydro_df)
+        st.download_button(
+            label="Download GLC Hydro Data",
+            data=csv,
+            file_name="glc_hydro_df.csv",
+            mime="text/csv",
+        )
     with col2:
         st.altair_chart(mid_zoomed_hydro_chart, use_container_width=True, theme=None)
+        csv = convert_df(mid_hydro_df)
+        st.download_button(
+            label="Download MID Hydro Data",
+            data=csv,
+            file_name="mid_hydro_df.csv",
+            mime="text/csv",
+        )
     with col3:
         st.altair_chart(old_zoomed_hydro_chart, use_container_width=True, theme=None)
+        csv = convert_df(old_hydro_df)
+        st.download_button(
+            label="Download OLD Hydro Data",
+            data=csv,
+            file_name="OLD_hydro_df.csv",
+            mime="text/csv",
+        )
     # st.altair_chart(combined_chart, use_container_width=False, theme=None)
     # st.altair_chart(combined_elev_chart, use_container_width=False, theme=None)
     # st.altair_chart(joint_chart, use_container_width=False, theme=None)

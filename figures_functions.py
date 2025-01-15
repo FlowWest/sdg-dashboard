@@ -3,6 +3,10 @@ import altair as alt
 from pandas import DataFrame
 import numpy as np
 import streamlit as st
+import geopandas as gpd
+import folium
+from streamlit_folium import st_folium
+
 
 location_gate = {
         "GLC":"Grantline",
@@ -216,14 +220,14 @@ def generate_velocity_gate_charts(full_merged_df, legend=None):
 
     # Velocity bar chart
     if legend:
-        base_vel = alt.Chart(summary_stats_vel, width=550, height=300).mark_bar().encode(
+        base_vel = alt.Chart(summary_stats_vel, width=625, height=300).mark_bar().encode(
             x=alt.X("date:T", title="Date"),
             y=alt.Y("total_velocity_duration:Q", title="Hours"),
             color=alt.condition(
                 brush,
                 alt.Color(
                     'Velocity_Category:N',
-                    title="Velocity Category",
+                    title="Velocity",
                     scale=alt.Scale(
                         domain=color_palette["Velocity_Category"].keys(),
                         range=color_palette["Velocity_Category"].values()
@@ -269,7 +273,7 @@ def generate_velocity_gate_charts(full_merged_df, legend=None):
 
     # Gate bar chart
     if legend:
-        base_gate = alt.Chart(summary_stats_dgl, width=550, height=300).mark_bar().encode(
+        base_gate = alt.Chart(summary_stats_dgl, width=625, height=300).mark_bar().encode(
             x=alt.X("date:T", title="Date"),
             y=alt.Y("total_gate_duration:Q", title="Hours"),
             color=alt.condition(
@@ -324,7 +328,14 @@ def generate_velocity_gate_charts(full_merged_df, legend=None):
     combined_bar_charts = alt.vconcat(
         gate_bar_chart,
         vel_bar_chart
-    ).resolve_scale(color='independent').properties(title= f"Model: {model}")
+    ).resolve_scale(
+        color='independent'
+    ).properties(
+        title= f"Model: {model}"
+    ).configure_legend(
+        orient='right',  
+        offset=5,       
+    )
 
     return combined_bar_charts
 
@@ -354,13 +365,18 @@ def generate_zoomed_velocity_charts(filtered_merged_df):
     )
 
     closed_gates = filtered_merged_df[['gate_min_datetime', 'gate_max_datetime', 'gate_status']].drop_duplicates().reset_index(drop=True)
+    color_scale = alt.Scale(
+        domain=["Closed"],
+        range=[color_palette["gate_status"]["Closed"]]
+    )
     area_gate_true = alt.Chart(closed_gates).mark_rect(
         color='orange'
     ).encode(
         x='gate_min_datetime:T',
         x2='gate_max_datetime:T',
         opacity=alt.value(0.2),
-        color=alt.value(color_palette["gate_status"]["Closed"]),
+        color = alt.Color('gate_status:N', scale=color_scale, legend=alt.Legend(title="Gate Status"))
+        # color=alt.value(color_palette["gate_status"]["Closed"]),
         # color=alt.condition(interval, alt.value('orange'), alt.value('lightgray'))
     ).transform_filter(
         alt.datum.gate_status == "Closed"
@@ -462,19 +478,131 @@ def generate_zoomed_velocity_charts(filtered_merged_df):
         layered_chart,
         # velocity
         text_summary
-    ).properties(title= f"Model: {model}")
+    ).properties(title= f"Model: {model}").configure_legend(
+        orient='right',  
+        offset=10,       
+    )
 
     # return (layered_chart, text_summary)
     return combined_chart
 
 # @st.cache_data
+def process_shapefiles(shapefile_paths):
+    gdfs = []
+
+    for path in shapefile_paths:
+        # Read shapefile
+        all_centroids=[]
+        gdf = gpd.read_file(path)
+
+        # Ensure the CRS is EPSG:4326
+        if gdf.crs != "EPSG:4326":
+            gdf = gdf.to_crs("EPSG:4326")
+        
+        # Remove rows with invalid or missing geometries
+        gdf = gdf[~gdf.geometry.isna()]
+        nodes_to_highlight = [112, 176, 69]
+        gdf = gdf[gdf['id'].isin(nodes_to_highlight)]
+        centroid = gdf.geometry.centroid
+        center = [centroid.y.mean(), centroid.x.mean()]
+
+        gdfs.append((gdf, center))
+        all_centroids.append(center)
+    
+    return gdfs, all_centroids
+
+def transform_and_filter_geometries(nodes_filter, filtered_channels):
+    """
+    Transforms the CRS of nodes and channels to EPSG:4326, removes invalid geometries
+
+    Parameters:
+        nodes_filter (GeoDataFrame): The GeoDataFrame containing node geometries.
+        filtered_channels (GeoDataFrame): The GeoDataFrame containing channel geometries.
+
+    Returns:
+        tuple: Transformed nodes_filter (GeoDataFrame), transformed filtered_channels (GeoDataFrame),
+               average latitude, average longitude.
+    """
+    # Transform nodes_filter CRS to EPSG:4326 if it's not already
+    if nodes_filter.crs != "EPSG:4326":
+        nodes_filter = nodes_filter.to_crs("EPSG:4326")
+    nodes_filter = nodes_filter[~nodes_filter.geometry.isna()]  # Remove invalid geometries
+
+    # Transform filtered_channels CRS to EPSG:4326 if it's not already
+    if filtered_channels.crs != "EPSG:4326":
+        filtered_channels = filtered_channels.to_crs("EPSG:4326")
+    filtered_channels = filtered_channels[~filtered_channels.geometry.isna()]  # Remove invalid geometries
+    
+    return nodes_filter, filtered_channels 
+
+def calculate_avg_lat_long(all_centroids):
+    avg_lat = sum([c[0] for c in all_centroids]) / len(all_centroids)
+    avg_lon = sum([c[1] for c in all_centroids]) / len(all_centroids)
+    return avg_lat, avg_lon
+
+def create_multi_layer_map(gdfs, avg_lon, avg_lat, filtered_gdf=None, filtered_polylines=None):
+    # Create the Folium map
+    if 'map' not in st.session_state or st.session_state.map is None:
+        m = folium.Map(location=[avg_lat, avg_lon], zoom_start=11)
+
+        if filtered_gdf is not None:
+            for _, row in filtered_gdf.iterrows():
+                # Define the popup content for the markers
+                popup_content = f"ID: {row['id']}"
+
+                # Define tooltip content for the marker (appears on hover)
+                tooltip_content = f"ID: {row['id']}"
+
+                # Add the marker with a popup, icon, and tooltip
+                folium.Marker(
+                    location=[row.geometry.y, row.geometry.x],  # Point geometry: extract lat/lon
+                    popup=popup_content,  # Popup content
+                    icon=folium.Icon(color='red', icon="circle"),  # Red marker icon
+                    tooltip=tooltip_content  # Tooltip on hover
+                ).add_to(m)
+
+    # Loop through the filtered polylines
+        if filtered_polylines is not None:
+            for _, row in filtered_polylines.iterrows():
+                # Define tooltip content
+                tooltip_content = f"""
+                id: {row['id']}<br>
+                name: {row.get('name', 'N/A')}<br>
+                """
+
+                # Define popup content
+                popup_content = f"""
+                id: {row['id']}<br>
+                name: {row.get('name', 'N/A')}<br>
+                distance: {row.get('distance', 'N/A')}<br>
+                variable: {row.get('variable', 'N/A')}<br>
+                interval: {row.get('interval', 'N/A')}<br>
+                period_op: {row.get('period_op', 'N/A')}
+                """
+
+
+                # Extract coordinates for the LineString
+                coordinates = [(point[1], point[0]) for point in row.geometry.coords]  # Convert (x, y) to (lat, lon)
+
+                # Add the LineString to the map with a Tooltip
+                folium.PolyLine(
+                    locations=coordinates,
+                    color='darkgreen',
+                    tooltip=folium.Tooltip(tooltip_content),
+                    popup=folium.Popup(popup_content, max_width=300)
+                ).add_to(m)
+        st.session_state.map = m
+
+    return st.session_state.map
+
 def generate_water_level_chart(filtered_hydro_df, filtered_merged_df):
+# @st.cache_data
     color_palette = {
         "Velocity_Category": {"Over 8ft/s": "#a6cee3", "Under 8ft/s": "#1f78b4"},  # Blues
         "gate_status": {"Closed": "#b2df8a", "Open": "#33a02c"}  # Greens
     }
-    gate = filtered_hydro_df['gate'].unique()[0]
-    model = filtered_hydro_df['scenario'].unique()[0]
+    gate = filtered_merged_df['gate'].unique()[0]
+    model = filtered_merged_df['model'].unique()[0]
     shared_y_scale = alt.Scale(domain=[0, 8])
     interval = alt.selection_interval(encodings=['x'],
                                   mark=alt.BrushConfig(fill='blue'))
@@ -589,5 +717,5 @@ def generate_water_level_chart(filtered_hydro_df, filtered_merged_df):
                                   rules_elev,
                                   area_gate_true,
                                   text
-        ).properties(width=700, height=400, title= f"Model: {model}")
+        ).properties(width=700, height=400, title= f"Modeled Water Level at {gate}")
     return min_stage_chart
