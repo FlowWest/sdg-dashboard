@@ -233,37 +233,37 @@ if uploaded_file:
         }]
     ), use_container_width=True)
 
-    st.write("### Gate and Channel Locations") 
+    # st.write("### Gate and Channel Locations") 
 
-    shapefile_paths = [
-        "data-raw/MSS_nodes/dsm2_nodes_newcs_extranodes.shp",
-        "data-raw/fc2024.01_chan/FC2024.01_channels_centerlines.shp"
-    ]
-    nodes = gpd.read_file(shapefile_paths[0])
-    channels = gpd.read_file(shapefile_paths[1])
-    nodes_to_highlight = [112, 176, 69]
-    nodes_filter = nodes[nodes['id'].isin(nodes_to_highlight)]
-    channels_with_numbers = pd.read_csv('data-raw/channel_names_from_h5.csv')
-    channels_with_numbers = channels_with_numbers.rename(columns={'chan_no': 'id'})
+    # shapefile_paths = [
+    #     "data-raw/MSS_nodes/dsm2_nodes_newcs_extranodes.shp",
+    #     "data-raw/fc2024.01_chan/FC2024.01_channels_centerlines.shp"
+    # ]
+    # nodes = gpd.read_file(shapefile_paths[0])
+    # channels = gpd.read_file(shapefile_paths[1])
+    # nodes_to_highlight = [112, 176, 69]
+    # nodes_filter = nodes[nodes['id'].isin(nodes_to_highlight)]
+    # channels_with_numbers = pd.read_csv('data-raw/channel_names_from_h5.csv')
+    # channels_with_numbers = channels_with_numbers.rename(columns={'chan_no': 'id'})
 
-    channels_merge = pd.merge(
-        channels,
-        channels_with_numbers,
-        how='left',
-        left_on='id',
-        right_on='id'
-    )
+    # channels_merge = pd.merge(
+    #     channels,
+    #     channels_with_numbers,
+    #     how='left',
+    #     left_on='id',
+    #     right_on='id'
+    # )
 
-    filtered_channels = channels_merge[channels_merge['id'].isin([211, 79, 134])]
+    # filtered_channels = channels_merge[channels_merge['id'].isin([211, 79, 134])]
 
     # Generate the map
-    gdfs, all_centroids= process_shapefiles(shapefile_paths)
-    nodes_filter, filtered_channels = transform_and_filter_geometries(nodes_filter, filtered_channels)
-    avg_lat, avg_lon = calculate_avg_lat_long(all_centroids)
-    map_object = create_multi_layer_map(gdfs=gdfs, avg_lat=avg_lat, avg_lon=avg_lon, filtered_gdf=nodes_filter, filtered_polylines=filtered_channels)
-    col1, col2, col3 = st.columns([1, 3, 1])
-    with col2:
-        st_map = st_folium(map_object, width=1200, height=500)
+    # gdfs, all_centroids= process_shapefiles(shapefile_paths)
+    # nodes_filter, filtered_channels = transform_and_filter_geometries(nodes_filter, filtered_channels)
+    # avg_lat, avg_lon = calculate_avg_lat_long(all_centroids)
+    # map_object = create_multi_layer_map(gdfs=gdfs, avg_lat=avg_lat, avg_lon=avg_lon, filtered_gdf=nodes_filter, filtered_polylines=filtered_channels)
+    # col1, col2, col3 = st.columns([1, 3, 1])
+    # with col2:
+    #     st_map = st_folium(map_object, width=1200, height=500)
 
 # Display the selected data (If any)
     # st.dataframe(st.session_state.map_data)
