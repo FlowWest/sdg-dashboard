@@ -14,15 +14,15 @@ location_gate = {
         "OLD":"OldRiver",
     }
 
-def post_process_gateop(multi_model_data, model, gate, year=None, start_date=None, end_date=None):
+def post_process_gateop(multi_model_data, model, gate, year=None, start_year=None, end_year=None):
     gate_data = multi_model_data[model][gate]['gate_operation_data']
     if year:
         gate_data["year"] = gate_data["datetime"].dt.year
         gate_data = gate_data[gate_data["year"] == year]
-    # if start_date:
-    #     gate_data['date'] = gate_data["datetime"].dt.date
-    #     gate_data = gate_data[(gate_data["date"] >= start_date) & 
-    #                           (gate_data["date"] <= end_date)]
+    if start_year:
+        gate_data['date'] = gate_data["datetime"].dt.year
+        gate_data = gate_data[(gate_data["date"] >= start_year) & 
+                              (gate_data["date"] <= end_year)]
     gate_data = gate_data.loc[
             gate_data['datetime'].dt.month.between(5, 11)
     ]
@@ -45,7 +45,7 @@ def post_process_gateop(multi_model_data, model, gate, year=None, start_date=Non
                                                 "streak_duration": "gate_streak_duration"})
     return merged_gate_df
 
-def post_process_velocity(multi_model_data, model, gate, year=None, start_date=None, end_date=None):
+def post_process_velocity(multi_model_data, model, gate, year=None, start_year=None, end_year=None):
     vel_zoom_df =multi_model_data[model][gate]["vel"]
     if year:
         vel_zoom_df["year"] = vel_zoom_df["datetime"].dt.year
@@ -53,10 +53,10 @@ def post_process_velocity(multi_model_data, model, gate, year=None, start_date=N
     vel_zoom_df = vel_zoom_df.loc[
             vel_zoom_df['datetime'].dt.month.between(5, 11)
     ]
-    # if start_date:
-    #     vel_zoom_df['date'] = vel_zoom_df["datetime"].dt.date
-    #     vel_zoom_df = vel_zoom_df[(vel_zoom_df["date"] >= start_date) & 
-    #                               (vel_zoom_df["date"] <= end_date)]
+    if start_year:
+        vel_zoom_df["year"] = vel_zoom_df["datetime"].dt.year
+        vel_zoom_df = vel_zoom_df[(vel_zoom_df["year"] >= start_year) & 
+                              (vel_zoom_df["year"] <= end_year)]
     vel_zoom_df['Velocity_Category'] = np.where(vel_zoom_df['value'] >= 8, "Over 8ft/s", "Under 8ft/s")
     #.shift shift value down and compare each value with the previous row; increase value when rows are different
     vel_zoom_df['consecutive_groups'] = (vel_zoom_df['Velocity_Category'] != vel_zoom_df['Velocity_Category'].shift()).cumsum()
@@ -71,9 +71,9 @@ def post_process_velocity(multi_model_data, model, gate, year=None, start_date=N
 
     return merged_vel_df
 
-def post_process_full_data(multi_model_data, model, gate, year=None, start_date=None, end_date=None):
-    merged_gate_df = post_process_gateop(multi_model_data, model, gate, year, start_date, end_date)
-    merged_vel_df = post_process_velocity(multi_model_data, model, gate, year, start_date, end_date)
+def post_process_full_data(multi_model_data, model, gate, year=None, start_year=None, end_year=None):
+    merged_gate_df = post_process_gateop(multi_model_data, model, gate, year, start_year, end_year)
+    merged_vel_df = post_process_velocity(multi_model_data, model, gate, year, start_year, end_year)
     full_merged_df = pd.merge(merged_vel_df, merged_gate_df, left_on="datetime", right_on="datetime")
     full_merged_df['time_unit'] = 0.25
 

@@ -6,76 +6,60 @@ from figures_functions import *
 #import plotly.express as px
 import datetime
 import numpy as np
-from streamlit_folium import st_folium, folium_static
-
-#TODO: add border to top barchart
-#TODO: add elevation graph based on week
-
-# Title and description
-st.set_page_config(layout="wide")
-
-# pg = st.navigation([
-#     st.Page("page1.py", title="First page", icon="🔥"),
-#     # st.Page(page2, title="Second page", icon=":material/favorite:"),
-# ])
-# pg.run()
+# from streamlit_folium import st_folium, folium_static
 
 st.title("Exploratory Data Visualizations for SDG Analysis")
 st.write("Upload your data and explore interactive visualizations.")
-# File uploader
-# uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
-#look for multi files
-uploaded_file = st.file_uploader("Upload Pickle file", type="pkl")
+# if "processed_data" not in st.session_state:
+#     st.session_state.processed_data = None
 
-if uploaded_file:
+
+# uploaded = st.file_uploader("Upload CSV", type=["csv"])
+
+# if uploaded is not None:
+#     df = pd.read_csv(uploaded)
+#     st.session_state.processed_data = df.head(10)
+
+# st.write("Processed data", st.session_state.processed_data)
+
+if "uploaded_data" not in st.session_state:
+    st.session_state.uploaded_data = None
+
+uploaded = st.file_uploader("Upload Pickle file", type="pkl")
+
+if uploaded is not None:
+    multi_model_data = pickle.load(uploaded)
+    st.session_state.uploaded_data = multi_model_data
+
+if st.session_state.uploaded_data:
     #--------------------------------------------------------------------------------------------------------------------------------
     #Data wrangling
-    multi_model_data = pickle.load(uploaded_file)
-    
-#-----------------------------------------------------------------------------------------------------------------------------------
-#     df = full_merged_df.rename(
-#     columns={
-#         "GLC": "Flow (ft/s)",
-#         "datetime": "Datetime",
-#         "Velocity_Category": "Velocity Category",
-#         "consecutive_groups": "Consecutive Groups",
-#         "min_datetime": "Flow Duration Min Datetime",
-#         "max_datetime": "Flow Duration Max Datetime",
-#         "streak_duration": "Streak Duration (hrs)",
-#         "gate_min_datetime": "Gate Min Datetime",
-#         "gate_max_datetime": "Gate Max Datetime",
-#         "gate_count": "Gate Count",
-#         "gate_streak_duration": "Gate Streak Duration (hrs)",
-#         "time_unit": "Time Unit (hrs)",
-#     }
-#     )
-#     df = df.reset_index(drop=True)
-    
-    #-------------------------------------------------------------------------------------------------------------------------------
-    # Markdown
-    # location_gate = {
-    #     "GLC":"Grantline",
-    #     "MID":"MiddleRiver",
-    #     "OLD":"OldRiver",
-    # }
+    multi_model_data = st.session_state.uploaded_data
     models = multi_model_data.keys()
     with st.sidebar:
         selected_model = st.selectbox('Select Model:', models)
+        selection_range = st.radio(
+            "Enter Selection Range",
+            ["Single Year", "Multi Year"],
+            captions=[
+                "Single year selection",
+                "Multiple year selection"
+            ],
+        )
         years = multi_model_data[selected_model]["GLC"]["gate_operation_data"]["datetime"].dt.year.unique().tolist()
-        years.append("None")
-        selected_option = st.selectbox('Select Year:', years)
-        if selected_option != "None":
-            selected_year = int(selected_option)
+        if selection_range == "Single Year":
+            years.append("None")
+            selected_option = st.selectbox('Select Year:', years)
+            if selected_option != "None":
+                selected_year = int(selected_option)
+            else:
+                selected_year = None
         else:
-            selected_year = None
-    # st.sidebar.write("### Filter by Date Range")
-    # start_date, end_date = st.sidebar.date_input(
-    #     "Select a date range:",
-    #     [multi_model_data[selected_model]["GLC"]["gate_operation_data"]["datetime"].min().date(), 
-    #     multi_model_data[selected_model]["GLC"]["gate_operation_data"]["datetime"].max().date()],
-    #     min_value=multi_model_data[selected_model]["GLC"]["gate_operation_data"]["datetime"].min().date(),
-    #     max_value=multi_model_data[selected_model]["GLC"]["gate_operation_data"]["datetime"].max().date()
-    # )
+            selected_start_option = st.selectbox('Select Start Year:', years)
+        # if selected_option != "None":
+            selected_start_year = int(selected_start_option)
+            selected_end_option = st.selectbox('Select End Year:', years)
+            selected_end_year = int(selected_end_option)
 
     glc_full_merged_df = post_process_full_data(multi_model_data, 
                                                 selected_model, 
@@ -192,12 +176,12 @@ if uploaded_file:
     velocity_summary_df = pd.DataFrame(velocity_summary_data)
     gate_summary_df = pd.DataFrame(gate_summary_data)
     min_max_vel_summary_df = pd.DataFrame(min_max_summary)
-
-
-    
+    # if 'glc_full_merged_df' not in st.session_state:
+    #     st.session_state.glc_full_merged_df = glc_full_merged_df
     glc_chart = generate_velocity_gate_charts(glc_full_merged_df)
     mid_chart = generate_velocity_gate_charts(mid_full_merged_df)
     old_chart = generate_velocity_gate_charts(old_full_merged_df, legend=True)
+#   
     st.write("### Data Preview")
     data_preview_glc, data_preview_mid, data_preview_old = st.tabs(["GLC", "MID", "OLD"])
     data_preview_glc.dataframe(glc_full_merged_df.head(20).style.format(precision=2).set_table_styles(
@@ -232,41 +216,40 @@ if uploaded_file:
             'props': [('background-color', '#f5f5f5')]
         }]
     ), use_container_width=True)
+#     # st.write("### Gate and Channel Locations") 
 
-    # st.write("### Gate and Channel Locations") 
+#     # shapefile_paths = [
+#     #     "data-raw/MSS_nodes/dsm2_nodes_newcs_extranodes.shp",
+#     #     "data-raw/fc2024.01_chan/FC2024.01_channels_centerlines.shp"
+#     # ]
+#     # nodes = gpd.read_file(shapefile_paths[0])
+#     # channels = gpd.read_file(shapefile_paths[1])
+#     # nodes_to_highlight = [112, 176, 69]
+#     # nodes_filter = nodes[nodes['id'].isin(nodes_to_highlight)]
+#     # channels_with_numbers = pd.read_csv('data-raw/channel_names_from_h5.csv')
+#     # channels_with_numbers = channels_with_numbers.rename(columns={'chan_no': 'id'})
 
-    # shapefile_paths = [
-    #     "data-raw/MSS_nodes/dsm2_nodes_newcs_extranodes.shp",
-    #     "data-raw/fc2024.01_chan/FC2024.01_channels_centerlines.shp"
-    # ]
-    # nodes = gpd.read_file(shapefile_paths[0])
-    # channels = gpd.read_file(shapefile_paths[1])
-    # nodes_to_highlight = [112, 176, 69]
-    # nodes_filter = nodes[nodes['id'].isin(nodes_to_highlight)]
-    # channels_with_numbers = pd.read_csv('data-raw/channel_names_from_h5.csv')
-    # channels_with_numbers = channels_with_numbers.rename(columns={'chan_no': 'id'})
+#     # channels_merge = pd.merge(
+#     #     channels,
+#     #     channels_with_numbers,
+#     #     how='left',
+#     #     left_on='id',
+#     #     right_on='id'
+#     # )
 
-    # channels_merge = pd.merge(
-    #     channels,
-    #     channels_with_numbers,
-    #     how='left',
-    #     left_on='id',
-    #     right_on='id'
-    # )
+#     # filtered_channels = channels_merge[channels_merge['id'].isin([211, 79, 134])]
 
-    # filtered_channels = channels_merge[channels_merge['id'].isin([211, 79, 134])]
+#     # Generate the map
+#     # gdfs, all_centroids= process_shapefiles(shapefile_paths)
+#     # nodes_filter, filtered_channels = transform_and_filter_geometries(nodes_filter, filtered_channels)
+#     # avg_lat, avg_lon = calculate_avg_lat_long(all_centroids)
+#     # map_object = create_multi_layer_map(gdfs=gdfs, avg_lat=avg_lat, avg_lon=avg_lon, filtered_gdf=nodes_filter, filtered_polylines=filtered_channels)
+#     # col1, col2, col3 = st.columns([1, 3, 1])
+#     # with col2:
+#     #     st_map = st_folium(map_object, width=1200, height=500)
 
-    # Generate the map
-    # gdfs, all_centroids= process_shapefiles(shapefile_paths)
-    # nodes_filter, filtered_channels = transform_and_filter_geometries(nodes_filter, filtered_channels)
-    # avg_lat, avg_lon = calculate_avg_lat_long(all_centroids)
-    # map_object = create_multi_layer_map(gdfs=gdfs, avg_lat=avg_lat, avg_lon=avg_lon, filtered_gdf=nodes_filter, filtered_polylines=filtered_channels)
-    # col1, col2, col3 = st.columns([1, 3, 1])
-    # with col2:
-    #     st_map = st_folium(map_object, width=1200, height=500)
-
-# Display the selected data (If any)
-    # st.dataframe(st.session_state.map_data)
+# # Display the selected data (If any)
+#     # st.dataframe(st.session_state.map_data)
     st.write("### Daily Gate Status Duration vs Daily Velocity Flow Duration")
     
     viz_1_tab1, viz_1_tab2 = st.tabs(["🗃 Data Summary", "📈 Chart"])
@@ -498,3 +481,5 @@ if uploaded_file:
 
 else:
     st.write("Please upload a Pickle file to see the visualization.")
+
+    # st.session_state["glc_full_merged_df"] = age
