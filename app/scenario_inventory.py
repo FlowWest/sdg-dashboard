@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-from db import engine
+from db import engine, get_all_scenarios
 
 unique_scenarios_query = (
     'select name as "Scenario", comments as "Comments" from scenarios;'
@@ -10,7 +10,7 @@ unique_scenarios_query = (
 st.title("Scenarios Inventory")
 st.write("Collection of scenarios available for analysis in dashboard")
 
-df = pd.read_sql(unique_scenarios_query, engine)
+df = get_all_scenarios()
 st.dataframe(df, hide_index=True)
 
 
