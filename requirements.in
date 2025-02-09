@@ -1,0 +1,9 @@
+sqlalchemy
+python-dotenv
+pandas
+numpy
+streamlit
+geopandas
+folium
+streamlit-folium
+psycopg2
