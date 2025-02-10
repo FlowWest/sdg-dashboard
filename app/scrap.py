@@ -127,22 +127,85 @@ cleaned_data_fpv1ma = cleaned_data[cleaned_data['model_name']=="FPV1Ma"]
 sdg_stage = cleaned_data_fpv1ma[cleaned_data_fpv1ma.node.isin(elev_list)]
 gate_data = sdg_stage[(sdg_stage.node.isin(gate_up_nodes)) & (sdg_stage.unit=="FEET")]
 
+def calculate_vel(flow_fish, gate_ops, elev, width):
+    d = flow_fish.merge(gate_ops, on = ["datetime"])
+    d = d[["datetime", "flow", "stage_up"]]
+    d_xs = d.assign(xs = (d["stage_up"] - (elev))*width)
+    d_vel = d_xs.assign(vel = d_xs["flow"]/d_xs["xs"])
+    return d_vel
+
+def generate_scenario_year_data(data, widths=[5, 5, 5], elevs = [-6, -5, -7]):
+    flow_op_nodes = ["glc_flow_fish", "mid_flow_fish", "old_flow_fish"]
+    gate_up_nodes = ["glc_gate_up", "mid_gate_up", "old_gate_up"]
+    names_in_order = ["glc", "mid", "old"]
+    scenario_water_levels = data[(data["node"].isin(['dgl','mho','old'])) & (data["param"] == "stage")]
+    scenario_gate_operation = data[(data["node"].isin(['mid_gateop', 'glc_gateop', 'old_gateop']))]
+    scenario_gate_up = data[(data.node.isin(gate_up_nodes)) & (data.unit=="FEET")]
+    scenario_flow_data = data[data.node.isin(flow_op_nodes)]
+
+    # generate velocity data
+    out = []
+    for fnode, gnode, w, e, n in zip(flow_op_nodes, gate_up_nodes, widths, elevs, names_in_order):
+        flow_fish = scenario_flow_data[scenario_flow_data.node==fnode].rename(columns={"value":"flow"})
+        gate_ops = scenario_gate_up[scenario_gate_up.node==gnode].rename(columns={"value":"stage_up"})
+        vels = calculate_vel(flow_fish, gate_ops, elev=e, width=w)
+        vels["location"] = n
+        out.append(vels)
+
+    all_vels = pd.concat(out)
+
+    return {
+        "water_levels": scenario_water_levels, 
+        "flow": scenario_flow_data, 
+        "gate_operations": scenario_gate_operation,
+        "vel": all_vels
+    }
+
+fpv1ma_raw = db[db["model_name"] == "FPV1Ma"]
+fpv1ma_data = generate_scenario_year_data(fpv1ma_raw)
+
+
+flow_op_nodes = ["glc_flow_fish", "mid_flow_fish", "old_flow_fish"]
+gate_up_nodes = ["glc_gate_up", "mid_gate_up", "old_gate_up"]
+names_in_order = ["glc", "mid", "old"]
+scenario_water_levels = data[(data["node"].isin(['dgl','mho','old'])) & (data["param"] == "stage")]
+scenario_gate_operation = data[(data["node"].isin(['mid_gateop', 'glc_gateop', 'old_gateop']))]
+scenario_flow_data = data[data.node.isin(flow_op_nodes)]
+
+# generate velocity data
+out = []
+for i, j, k, l, n in zip(flow_op_nodes, gate_up_nodes, widths, elevs, names_in_order):
+    print(f"workingin on {i} {j} {k} {l} {n} ----------------")
+    flow_fish = scenario_flow_data[scenario_flow_data.node==i].rename(columns={"value":"flow"})
+    print(flow_fish)
+    gate_ops = scenario_gate_operation[scenario_gate_operation.node==j].rename(columns={"value":"stage_up"})
+    print(gate_ops)
+    vels = calculate_vel(flow_fish, gate_ops, k, l)
+    vels["location"] = n
+    out.append(vels)
+    
+
+all_vels = pd.concat(out)
+
+
+
 sdg_flow = cleaned_data_fpv1ma[cleaned_data_fpv1ma.node.isin(flow_list)]
 flow_data = sdg_flow[sdg_flow.node.isin(flow_op_nodes)]
 sdg_flow_glc_flow_fish = flow_data[flow_data.node=="glc_flow_fish"].rename(columns={"value":"flow"})
 sdg_gate_glc_gate_up = gate_data[gate_data.node=="glc_gate_up"].rename(columns={"value":"stage_up"})
-glc_data = sdg_flow_glc_flow_fish.merge(sdg_gate_glc_gate_up, on = ["datetime"])
-glc_data = glc_data[["datetime", "flow", "stage_up"]]
-glc_data_xs = glc_data.assign(xs = (glc_data["stage_up"] - (-6))*5)
-glc_data_vel = glc_data_xs.assign(vel = glc_data_xs["flow"]/glc_data_xs["xs"])
+glc_data_vel =calculate_vel(sdg_flow_glc_flow_fish, sdg_gate_glc_gate_up)
 
-xs = (stage_up-bottom_elev)*width
-vel = flow/xs
-glc_vel = pd.DataFrame({
-    "datetime":sdg_flow_glc_flow_fish[["datetime"]],
-    "flow":sdg_flow_glc_flow_fish[["value"]],
-    "stage_up":sdg_gate_glc_gate_up[["value"]]
-}, index=sdg_flow_glc_flow_fish[["datetime"]])
+
+
+# glc_data = sdg_flow_glc_flow_fish.merge(sdg_gate_glc_gate_up, on = ["datetime"])
+# glc_data = glc_data[["datetime", "flow", "stage_up"]]
+# glc_data_xs = glc_data.assign(xs = (glc_data["stage_up"] - (-6))*5)
+# glc_data_vel = glc_data_xs.assign(vel = glc_data_xs["flow"]/glc_data_xs["xs"])
+
+water_levels_fpv1ma = cleaned_data_fpv1ma[(cleaned_data_fpv1ma["node"].isin(['dgl','mho','old'])) & (cleaned_data_fpv1ma["param"] == "stage")]
+gate_operation_fpv1ma = cleaned_data_fpv1ma[(cleaned_data_fpv1ma["node"].isin(stn_list))]
+
+
 
 sdg_stage = filter_data(cleaned_data_fpv1ma, 'node', elev_list, start_date, end_date)
 sdg_flow = filter_data(cleaned_data_fpv1ma, 'node', flow_list, start_date, end_date)
