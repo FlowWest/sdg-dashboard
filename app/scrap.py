@@ -12,7 +12,8 @@ gatef = {'name' : ['GrantLine','MiddleRiver','OldRiver'],
         #  "flow_op" : ["GLC_FLOW_FISH", "MID_FLOW_FISH", "OLD_FLOW_FISH"],
         #  "gate_status" : ["GLC_GATE_UP", "MID_GATE_UP", "OLD_GATE_UP"]
          }
-
+flow_op_nodes = ["glc_flow_fish", "mid_flow_fish", "old_flow_fish"]
+gate_up_nodes = ["glc_gate_up", "mid_gate_up", "old_gate_up"]
 # stn_list = ['MID_GATEOP','GLC_GATEOP','OLD_GATEOP']
 stn_list = ['mid_gateop', 'glc_gateop', 'old_gateop']
 # elev_list =['MID_GATE_UP','MID_GATE_DOWN','GLC_GATE_UP','GLC_GATE_DOWN','OLD_GATE_UP','OLD_GATE_DOWN']
@@ -51,7 +52,7 @@ def generate_full_model_data(data: Dict,
     sdg = data[path]['sdg']
     hydro = data[path]['hydro']
     model = parse_dss_filename(path)
-
+    
     sdg_stage = filter_data(sdg, 'gate_op', elev_list, start_date, end_date)
     sdg_flow = filter_data(sdg, 'gate_op', flow_list, start_date, end_date)
     sdg_gateop = filter_data(sdg, 'gate_op', stn_list, start_date, end_date)
@@ -121,8 +122,28 @@ columns = ['id', 'scenario_id', 'datetime','node', 'param','value', 'unit', 'upd
 db = pd.DataFrame(db_data, columns=columns)
 cleaned_data = db.drop(["id", "scenario_id", "updated_at"], axis = 1)
 cleaned_data_fpv1ma = cleaned_data[cleaned_data['model_name']=="FPV1Ma"]
-start_date = '2016-05-01'
-end_date = '2016-11-30'
+# start_date = '2016-05-01'
+# end_date = '2016-11-30'
+sdg_stage = cleaned_data_fpv1ma[cleaned_data_fpv1ma.node.isin(elev_list)]
+gate_data = sdg_stage[(sdg_stage.node.isin(gate_up_nodes)) & (sdg_stage.unit=="FEET")]
+
+sdg_flow = cleaned_data_fpv1ma[cleaned_data_fpv1ma.node.isin(flow_list)]
+flow_data = sdg_flow[sdg_flow.node.isin(flow_op_nodes)]
+sdg_flow_glc_flow_fish = flow_data[flow_data.node=="glc_flow_fish"].rename(columns={"value":"flow"})
+sdg_gate_glc_gate_up = gate_data[gate_data.node=="glc_gate_up"].rename(columns={"value":"stage_up"})
+glc_data = sdg_flow_glc_flow_fish.merge(sdg_gate_glc_gate_up, on = ["datetime"])
+glc_data = glc_data[["datetime", "flow", "stage_up"]]
+glc_data_xs = glc_data.assign(xs = (glc_data["stage_up"] - (-6))*5)
+glc_data_vel = glc_data_xs.assign(vel = glc_data_xs["flow"]/glc_data_xs["xs"])
+
+xs = (stage_up-bottom_elev)*width
+vel = flow/xs
+glc_vel = pd.DataFrame({
+    "datetime":sdg_flow_glc_flow_fish[["datetime"]],
+    "flow":sdg_flow_glc_flow_fish[["value"]],
+    "stage_up":sdg_gate_glc_gate_up[["value"]]
+}, index=sdg_flow_glc_flow_fish[["datetime"]])
+
 sdg_stage = filter_data(cleaned_data_fpv1ma, 'node', elev_list, start_date, end_date)
 sdg_flow = filter_data(cleaned_data_fpv1ma, 'node', flow_list, start_date, end_date)
 sdg_gateop = filter_data(cleaned_data_fpv1ma, 'node', stn_list, start_date, end_date)
