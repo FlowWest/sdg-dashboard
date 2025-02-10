@@ -15,7 +15,7 @@ location_gate = {
     }
 
 def post_process_gateop(multi_model_data, model, gate, year=None, start_year=None, end_year=None):
-    gate_data = multi_model_data[model][gate]['gate_operation_data']
+    # gate_data = multi_model_data[model][gate]['gate_operation_data']
     if year:
         gate_data["year"] = gate_data["datetime"].dt.year
         gate_data = gate_data[gate_data["year"] == year]

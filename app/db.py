@@ -18,28 +18,14 @@ def get_all_scenarios():
     return pd.read_sql(q, engine)
 
 
-def get_gateop_elevations_for_scenario(scenario, year=None, backend=None):
-    if year:
-        q = text(""" 
-            SELECT * from dsm2 
-            WHERE
-                node in ('mid_gate_up','mid_gate_down','glc_gate_up','glc_gate_down','old_gate_up','old_gate_down')
-            AND 
-                year = :year
-            AND 
-                scenario_id = (select id from scenarios where name = :scenario);
-        """)
-        params = {"year": year, "scenario": scenario}
-    else:
-        q = text("""
-            SELECT * from dsm2 
-            WHERE
-                node in ('mid_gate_up','mid_gate_down','glc_gate_up','glc_gate_down','old_gate_up','old_gate_down');
-            AND
-                scenario_id in (SELECT id FROM scenarios WHERE name = :scenario)
-            """)
-        params = {"scenario": scenario}
-    if backend:
-        return pd.read_sql(q, engine, params=params, dtype_backend="pyarrow")
+def get_scenario_year_data(scenario, year):
+    q = text(""" 
+        SELECT * from dsm2 
+        WHERE
+            year = :year
+        AND 
+            scenario_id = (select id from scenarios where name = :scenario);
+    """)
+    params = {"year": year, "scenario": scenario}
 
     return pd.read_sql(q, engine, params=params)

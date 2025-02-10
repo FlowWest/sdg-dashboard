@@ -6,60 +6,44 @@ from figures_functions import *
 #import plotly.express as px
 import datetime
 import numpy as np
+from app.db import get_scenario_year_data, get_all_scenarios
 # from streamlit_folium import st_folium, folium_static
 
 st.title("Exploratory Data Visualizations for SDG Analysis")
 st.write("Upload your data and explore interactive visualizations.")
-# if "processed_data" not in st.session_state:
-#     st.session_state.processed_data = None
 
+scenario_year_data = get_scenario_year_data("FPV1Ma", 2016)
 
-# uploaded = st.file_uploader("Upload CSV", type=["csv"])
-
-# if uploaded is not None:
-#     df = pd.read_csv(uploaded)
-#     st.session_state.processed_data = df.head(10)
-
-# st.write("Processed data", st.session_state.processed_data)
-
-if "uploaded_data" not in st.session_state:
-    st.session_state.uploaded_data = None
-
-uploaded = st.file_uploader("Upload Pickle file", type="pkl")
-
-if uploaded is not None:
-    multi_model_data = pickle.load(uploaded)
-    st.session_state.uploaded_data = multi_model_data
-
-if st.session_state.uploaded_data:
+if scenario_year_data:
     #--------------------------------------------------------------------------------------------------------------------------------
     #Data wrangling
-    multi_model_data = st.session_state.uploaded_data
-    models = multi_model_data.keys()
+    scenarios = get_all_scenarios()
+    models = scenarios["Scenarios"]
     with st.sidebar:
         selected_model = st.selectbox('Select Model:', models)
-        selection_range = st.radio(
-            "Enter Selection Range",
-            ["Single Year", "Multi Year"],
-            captions=[
-                "Single year selection",
-                "Multiple year selection"
-            ],
-        )
-        years = multi_model_data[selected_model]["GLC"]["gate_operation_data"]["datetime"].dt.year.unique().tolist()
-        if selection_range == "Single Year":
-            years.append("None")
-            selected_option = st.selectbox('Select Year:', years)
-            if selected_option != "None":
-                selected_year = int(selected_option)
-            else:
-                selected_year = None
-        else:
-            selected_start_option = st.selectbox('Select Start Year:', years)
-        # if selected_option != "None":
-            selected_start_year = int(selected_start_option)
-            selected_end_option = st.selectbox('Select End Year:', years)
-            selected_end_year = int(selected_end_option)
+        # selection_range = st.radio(
+        #     "Enter Selection Range",
+        #     ["Single Year", "Multi Year"],
+        #     captions=[
+        #         "Single year selection",
+        #         "Multiple year selection"
+        #     ],
+        # )
+        years = scenario_year_data['water_levels']['year'].unique().tolist()
+        # if selection_range == "Single Year":
+            # years.append("None")
+        selected_option = st.selectbox('Select Year:', years)
+            # if selected_option != "None":
+        selected_year = int(selected_option)
+            # else:
+            #     selected_year = None
+        # else:
+        #     selected_start_option = st.selectbox('Select Start Year:', years)
+        # # if selected_option != "None":
+        #     selected_start_year = int(selected_start_option)
+        #     selected_end_option = st.selectbox('Select End Year:', years)
+        #     selected_end_year = int(selected_end_option)
+    glc_filtered = scenario_year_data
 
     glc_full_merged_df = post_process_full_data(multi_model_data, 
                                                 selected_model, 
