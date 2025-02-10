@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 
 
 @st.cache_resource
@@ -18,13 +18,28 @@ def get_all_scenarios():
     return pd.read_sql(q, engine)
 
 
-def get_gateop_elevations(scenario, year=None):
+def get_gateop_elevations_for_scenario(scenario, year=None, backend=None):
     if year:
-        q = f"""
-            SELECT * from dsm2 where node in ('mid_gate_up','mid_gate_down','glc_gate_up','glc_gate_down','old_gate_up','old_gate_down') and date_part('year', datetime) = {year} and where scenario_id in (select id from scenarios where name = '{scenario}');
-            """
+        q = text(""" 
+            SELECT * from dsm2 
+            WHERE
+                node in ('mid_gate_up','mid_gate_down','glc_gate_up','glc_gate_down','old_gate_up','old_gate_down')
+            AND 
+                year = :year
+            AND 
+                scenario_id = (select id from scenarios where name = :scenario);
+        """)
+        params = {"year": year, "scenario": scenario}
     else:
-        q = """
-            SELECT * from dsm2 where node in ('mid_gate_up','mid_gate_down','glc_gate_up','glc_gate_down','old_gate_up','old_gate_down');
-            """
-    return pd.read_sql(q, engine)
+        q = text("""
+            SELECT * from dsm2 
+            WHERE
+                node in ('mid_gate_up','mid_gate_down','glc_gate_up','glc_gate_down','old_gate_up','old_gate_down');
+            AND
+                scenario_id in (SELECT id FROM scenarios WHERE name = :scenario)
+            """)
+        params = {"scenario": scenario}
+    if backend:
+        return pd.read_sql(q, engine, params=params, dtype_backend="pyarrow")
+
+    return pd.read_sql(q, engine, params=params)
