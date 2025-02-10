@@ -6,14 +6,14 @@ from figures_functions import *
 #import plotly.express as px
 import datetime
 import numpy as np
-from app.db import get_scenario_year_data, get_all_scenarios
+from db import get_scenario_year_data, get_all_scenarios
 # from streamlit_folium import st_folium, folium_static
 
 st.title("Exploratory Data Visualizations for SDG Analysis")
 st.write("Upload your data and explore interactive visualizations.")
 
 scenario_year_data = get_scenario_year_data("FPV1Ma", 2016)
-
+print(scenario_year_data)
 if scenario_year_data:
     #--------------------------------------------------------------------------------------------------------------------------------
     #Data wrangling
@@ -43,34 +43,35 @@ if scenario_year_data:
         #     selected_start_year = int(selected_start_option)
         #     selected_end_option = st.selectbox('Select End Year:', years)
         #     selected_end_year = int(selected_end_option)
-    glc_filtered = scenario_year_data
+    # glc_filtered = scenario_year_data()
 
-    glc_full_merged_df = post_process_full_data(multi_model_data, 
+    glc_full_merged_df = post_process_full_data(scenario_year_data, 
                                                 selected_model, 
                                                 "GLC", 
                                                 year=selected_year)
     glc_full_merged_df = glc_full_merged_df.rename(columns={"value": "velocity"})
-    glc_hydro_df = post_process_hydro_data(multi_model_data, selected_model, "GLC", selected_year)
+
+    glc_hydro_df = post_process_hydro_data(scenario_year_data['water_levels'], selected_model, "GLC", selected_year)
     glc_avg_daily_velocity = calc_avg_daily_vel(glc_full_merged_df)
     glc_avg_daily_gate = calc_avg_daily_gate(glc_full_merged_df)
     glc_total_daily_velocity = calc_avg_len_consec_vel(glc_full_merged_df)
     glc_total_daily_gate = calc_avg_len_consec_gate(glc_full_merged_df)
 
-    old_full_merged_df = post_process_full_data(multi_model_data, selected_model, "OLD", year=selected_year)
-    old_full_merged_df = old_full_merged_df.rename(columns={"value": "velocity"})
-    old_hydro_df = post_process_hydro_data(multi_model_data, selected_model, "OLD", selected_year)
-    old_avg_daily_velocity = calc_avg_daily_vel(old_full_merged_df)
-    old_avg_daily_gate = calc_avg_daily_gate(old_full_merged_df)
-    old_total_daily_velocity = calc_avg_len_consec_vel(old_full_merged_df)
-    old_total_daily_gate = calc_avg_len_consec_gate(old_full_merged_df)
+    # old_full_merged_df = post_process_full_data(multi_model_data, selected_model, "OLD", year=selected_year)
+    # old_full_merged_df = old_full_merged_df.rename(columns={"value": "velocity"})
+    # old_hydro_df = post_process_hydro_data(multi_model_data, selected_model, "OLD", selected_year)
+    # old_avg_daily_velocity = calc_avg_daily_vel(old_full_merged_df)
+    # old_avg_daily_gate = calc_avg_daily_gate(old_full_merged_df)
+    # old_total_daily_velocity = calc_avg_len_consec_vel(old_full_merged_df)
+    # old_total_daily_gate = calc_avg_len_consec_gate(old_full_merged_df)
 
-    mid_full_merged_df = post_process_full_data(multi_model_data, selected_model, "MID", year=selected_year)
-    mid_hydro_df = post_process_hydro_data(multi_model_data, selected_model, "MID", selected_year)
-    mid_full_merged_df = mid_full_merged_df.rename(columns={"value": "velocity"})
-    mid_avg_daily_velocity = calc_avg_daily_vel(mid_full_merged_df)
-    mid_avg_daily_gate = calc_avg_daily_gate(mid_full_merged_df)
-    mid_total_daily_velocity = calc_avg_len_consec_vel(mid_full_merged_df)
-    mid_total_daily_gate = calc_avg_len_consec_gate(mid_full_merged_df)
+    # mid_full_merged_df = post_process_full_data(multi_model_data, selected_model, "MID", year=selected_year)
+    # mid_hydro_df = post_process_hydro_data(multi_model_data, selected_model, "MID", selected_year)
+    # mid_full_merged_df = mid_full_merged_df.rename(columns={"value": "velocity"})
+    # mid_avg_daily_velocity = calc_avg_daily_vel(mid_full_merged_df)
+    # mid_avg_daily_gate = calc_avg_daily_gate(mid_full_merged_df)
+    # mid_total_daily_velocity = calc_avg_len_consec_vel(mid_full_merged_df)
+    # mid_total_daily_gate = calc_avg_len_consec_gate(mid_full_merged_df)
 
     glc_min_date = min(glc_full_merged_df['date'])
     glc_max_date = max(glc_full_merged_df['date']) 
@@ -85,74 +86,74 @@ if scenario_year_data:
     velocity_summary_data = {
         "Location": [
             location_gate[glc_full_merged_df['gate'][0]],
-            location_gate[mid_full_merged_df['gate'][0]],
-            location_gate[old_full_merged_df['gate'][0]]
+            # location_gate[mid_full_merged_df['gate'][0]],
+            # location_gate[old_full_merged_df['gate'][0]]
         ],
         f"Average Daily Time (Hours) {glc_avg_daily_velocity['Velocity_Category'][0]}":[
             round(glc_avg_daily_velocity['time_unit'][0], 2),
-            round(mid_avg_daily_velocity['time_unit'][0], 2),
-            round(old_avg_daily_velocity['time_unit'][0], 2),
+            # round(mid_avg_daily_velocity['time_unit'][0], 2),
+            # round(old_avg_daily_velocity['time_unit'][0], 2),
         ],
         f"Average Daily Time (Hours) {glc_avg_daily_velocity['Velocity_Category'][1]}":[
             round(glc_avg_daily_velocity['time_unit'][1], 2),
-            round(mid_avg_daily_velocity['time_unit'][1], 2),
-            round(old_avg_daily_velocity['time_unit'][1], 2),
+            # round(mid_avg_daily_velocity['time_unit'][1], 2),
+            # round(old_avg_daily_velocity['time_unit'][1], 2),
         ],
         f"Average Streak Duration (Hours) {glc_total_daily_velocity['Velocity_Category'][0]}":[
             round(glc_total_daily_velocity['daily_average_time_per_consecutive_group'][0], 2),
-            round(mid_total_daily_velocity['daily_average_time_per_consecutive_group'][0], 2),
-            round(old_total_daily_velocity['daily_average_time_per_consecutive_group'][0], 2),
+            # round(mid_total_daily_velocity['daily_average_time_per_consecutive_group'][0], 2),
+            # round(old_total_daily_velocity['daily_average_time_per_consecutive_group'][0], 2),
         ],
         f"Average Streak Duration (Hours) {glc_total_daily_velocity['Velocity_Category'][1]}":[
             round(glc_total_daily_velocity['daily_average_time_per_consecutive_group'][1], 2),
-            round(mid_total_daily_velocity['daily_average_time_per_consecutive_group'][1], 2),
-            round(old_total_daily_velocity['daily_average_time_per_consecutive_group'][1], 2),
+            # round(mid_total_daily_velocity['daily_average_time_per_consecutive_group'][1], 2),
+            # round(old_total_daily_velocity['daily_average_time_per_consecutive_group'][1], 2),
         ]
     }
 
     gate_summary_data = {
         "Location": [
             glc_full_merged_df['gate'][0],
-            mid_full_merged_df['gate'][0],
-            old_full_merged_df['gate'][0]
+            # mid_full_merged_df['gate'][0],
+            # old_full_merged_df['gate'][0]
         ],
         f"Average Daily {glc_avg_daily_gate['gate_status'][0]} Time (Hours) for gate":[
             round(glc_avg_daily_gate['time_unit'][0], 2),
-            round(mid_avg_daily_gate['time_unit'][0], 2),
-            round(old_avg_daily_gate['time_unit'][0], 2),
+            # round(mid_avg_daily_gate['time_unit'][0], 2),
+            # round(old_avg_daily_gate['time_unit'][0], 2),
         ],
         f"Average Daily {glc_avg_daily_gate['gate_status'][1]} Time (Hours) for gate":[
             round(glc_avg_daily_gate['time_unit'][1], 2),
-            round(mid_avg_daily_gate['time_unit'][1], 2),
-            round(old_avg_daily_gate['time_unit'][1], 2),
+            # round(mid_avg_daily_gate['time_unit'][1], 2),
+            # round(old_avg_daily_gate['time_unit'][1], 2),
         ],
         f"Average {glc_total_daily_gate['gate_status'][0]} Duration (Hours) Per Streak":[
             round(glc_total_daily_gate['daily_average_time_per_consecutive_gate'][0], 2),
-            round(mid_total_daily_gate['daily_average_time_per_consecutive_gate'][0], 2),
-            round(old_total_daily_gate['daily_average_time_per_consecutive_gate'][0], 2),
+            # round(mid_total_daily_gate['daily_average_time_per_consecutive_gate'][0], 2),
+            # round(old_total_daily_gate['daily_average_time_per_consecutive_gate'][0], 2),
         ],
         f"Average {glc_total_daily_gate['gate_status'][1]} Duration (Hours) Per Streak":[
             round(glc_total_daily_gate['daily_average_time_per_consecutive_gate'][1], 2),
-            round(mid_total_daily_gate['daily_average_time_per_consecutive_gate'][1], 2),
-            round(old_total_daily_gate['daily_average_time_per_consecutive_gate'][1], 2),
+            # round(mid_total_daily_gate['daily_average_time_per_consecutive_gate'][1], 2),
+            # round(old_total_daily_gate['daily_average_time_per_consecutive_gate'][1], 2),
         ]
     }
     
     min_max_summary = {
         "Location": [
             location_gate[glc_full_merged_df['gate'][0]],
-            location_gate[mid_full_merged_df['gate'][0]],
-            location_gate[old_full_merged_df['gate'][0]]
+            # location_gate[mid_full_merged_df['gate'][0]],
+            # location_gate[old_full_merged_df['gate'][0]]
         ],
         "Minimum velocity through fish passage (ft/s)":[
             round(min(glc_full_merged_df['velocity']), 2),
-            round(min(mid_full_merged_df['velocity']), 2),
-            round(min(old_full_merged_df['velocity']), 2),
+            # round(min(mid_full_merged_df['velocity']), 2),
+            # round(min(old_full_merged_df['velocity']), 2),
         ],
         "Maximum velocity through fish passage (ft/s)":[
             round(max(glc_full_merged_df['velocity']), 2),
-            round(max(mid_full_merged_df['velocity']), 2),
-            round(max(old_full_merged_df['velocity']), 2),
+            # round(max(mid_full_merged_df['velocity']), 2),
+            # round(max(old_full_merged_df['velocity']), 2),
         ]
     }
 
@@ -163,8 +164,8 @@ if scenario_year_data:
     # if 'glc_full_merged_df' not in st.session_state:
     #     st.session_state.glc_full_merged_df = glc_full_merged_df
     glc_chart = generate_velocity_gate_charts(glc_full_merged_df)
-    mid_chart = generate_velocity_gate_charts(mid_full_merged_df)
-    old_chart = generate_velocity_gate_charts(old_full_merged_df, legend=True)
+    # mid_chart = generate_velocity_gate_charts(mid_full_merged_df)
+    # old_chart = generate_velocity_gate_charts(old_full_merged_df, legend=True)
 #   
     st.write("### Data Preview")
     data_preview_glc, data_preview_mid, data_preview_old = st.tabs(["GLC", "MID", "OLD"])

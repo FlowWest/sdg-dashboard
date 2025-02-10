@@ -71,9 +71,11 @@ def post_process_velocity(multi_model_data, model, gate, year=None, start_year=N
 
     return merged_vel_df
 
-def post_process_full_data(multi_model_data, model, gate, year=None, start_year=None, end_year=None):
-    merged_gate_df = post_process_gateop(multi_model_data, model, gate, year, start_year, end_year)
-    merged_vel_df = post_process_velocity(multi_model_data, model, gate, year, start_year, end_year)
+def post_process_full_data(scenario_year_data, model, gate, year=None, start_year=None, end_year=None):
+    gate_data = scenario_year_data['gate_operations']
+    flow_data = scenario_year_data['flow']
+    merged_gate_df = post_process_gateop(gate_data, model, gate, year, start_year, end_year)
+    merged_vel_df = post_process_velocity(flow_data, model, gate, year, start_year, end_year)
     full_merged_df = pd.merge(merged_vel_df, merged_gate_df, left_on="datetime", right_on="datetime")
     full_merged_df['time_unit'] = 0.25
 
