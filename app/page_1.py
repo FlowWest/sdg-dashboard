@@ -26,16 +26,33 @@ def load_scenario_data(scenario, year):
 st.title("Exploratory Data Visualizations for SDG Analysis")
 st.write("Upload your data and explore interactive visualizations.")
 
+years = [2016, 2017, 2018, 2019]
+
+if "previous_year" not in st.session_state:
+    st.session_state.previous_year = None
+
 if "scenario_data" not in st.session_state:
-    with st.spinner("Loading scenario data..."):
+    st.session_state.scenario_data = None
+    st.session_state.scenarios = None
+    st.session_state.scenario_year_data = None
+
+selected_year = st.sidebar.selectbox("Select Year:", years)
+
+selected_year = int(selected_year)
+if (
+    st.session_state.scenario_data is None
+    or selected_year != st.session_state.previous_year
+):
+    with st.spinner(f"Loading scenario data for {selected_year}..."):
         scenario_year_data, scenarios, scenario_data = load_scenario_data(
-            "FPV1Ma", 2016
+            "FPV1Ma", selected_year
         )
         st.session_state.scenario_data = scenario_data
         st.session_state.scenarios = scenarios
         st.session_state.scenario_year_data = scenario_year_data
+        st.session_state.previous_year = selected_year
 
-# Use the cached data from session state
+# cache data
 scenario_data = st.session_state.scenario_data
 scenarios = st.session_state.scenarios
 scenario_year_data = st.session_state.scenario_year_data
@@ -57,9 +74,7 @@ if scenario_data:
         years = scenario_data["water_levels"]["year"].unique().tolist()
         # if selection_range == "Single Year":
         # years.append("None")
-        selected_option = st.selectbox("Select Year:", years)
         # if selected_option != "None":
-        selected_year = int(selected_option)
         # else:
         #     selected_year = None
         # else:
