@@ -4,6 +4,7 @@ st.set_page_config(layout="wide")
 
 pg = st.navigation(
     {
+        "Home": [st.Page("home.py", title="Home")],
         "Historically Based Scenario": [
             st.Page("page_1.py", title="Single Year Historically Based Simulation"),
             st.Page("page_2.py", title="3-5 Year Historically Based Simulation"),
@@ -19,4 +20,3 @@ pg = st.navigation(
     }
 )
 pg.run()
-
