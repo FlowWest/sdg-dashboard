@@ -76,3 +76,23 @@ def generate_scenario_year_data(data, widths=[5, 5, 5], elevs=[-6, -5, -7]):
         "gate_operations": scenario_gate_operation,
         "vel": all_vels,
     }
+
+
+def get_filter_nodes_for_gate(gate, dataset):
+    return {
+        "glc": {
+            "water_levels": "dgl",
+            "gate_operations": "glc_gateop",
+            "flow": "glc_flow_fish",
+        },
+        "old": {
+            "water_levels": "old",
+            "gate_operations": "old_gateop",
+            "flow": "old_flow_fish",
+        },
+        "mid": {
+            "water_levels": "mid",
+            "gate_operations": "mid_gateop",
+            "flow": "mid_flow_fish",
+        },
+    }[gate][dataset]

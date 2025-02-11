@@ -7,7 +7,12 @@ from figures_functions import *
 # import plotly.express as px
 import datetime
 import numpy as np
-from db import get_scenario_year_data, get_all_scenarios, generate_scenario_year_data
+from db import (
+    get_scenario_year_data,
+    get_all_scenarios,
+    generate_scenario_year_data,
+    get_filter_nodes_for_gate,
+)
 
 
 # from streamlit_folium import st_folium, folium_static
@@ -57,7 +62,8 @@ scenario_data = st.session_state.scenario_data
 scenarios = st.session_state.scenarios
 scenario_year_data = st.session_state.scenario_year_data
 
-if scenario_data:
+
+if scenario_data and not scenario_year_data.empty:
     # --------------------------------------------------------------------------------------------------------------------------------
     # Data wrangling
     models = scenarios["Scenario"]
@@ -85,30 +91,15 @@ if scenario_data:
         #     selected_end_year = int(selected_end_option)
     # glc_filtered = scenario_year_data()
 
-    gate_filters = {
-        "glc": {
-            "water_levels": "dgl",
-            "gate_operations": "glc_gateop",
-            "flow": "glc_flow_fish",
-        },
-        "old": {
-            "water_levels": "mid",
-            "gate_operations": "old_gateop",
-            "flow": "old_flow_fish",
-        },
-        "mid": {
-            "water_levels": "dgl",
-            "gate_operations": "mid_gateop",
-            "flow": "mid_flow_fish",
-        },
-    }
-
+    # GLC wranging ------------------------------------
     glc_gate_data = scenario_data["gate_operations"]
     glc_gate_data = glc_gate_data[
-        glc_gate_data["node"] == gate_filters["glc"]["gate_operations"]
+        glc_gate_data["node"] == get_filter_nodes_for_gate("glc", "gate_operations")
     ]
     glc_flow_data = scenario_data["flow"]
-    glc_flow_data = glc_flow_data[glc_flow_data["node"] == gate_filters["glc"]["flow"]]
+    glc_flow_data = glc_flow_data[
+        glc_flow_data["node"] == get_filter_nodes_for_gate("glc", "flow")
+    ]
 
     glc_full_merged_df = post_process_full_data(
         glc_gate_data, glc_flow_data, "glc", "glc", year=selected_year
@@ -123,6 +114,30 @@ if scenario_data:
     glc_avg_daily_gate = calc_avg_daily_gate(glc_full_merged_df)
     glc_total_daily_velocity = calc_avg_len_consec_vel(glc_full_merged_df)
     glc_total_daily_gate = calc_avg_len_consec_gate(glc_full_merged_df)
+
+    # OLD wranging ----------------------------------
+    old_gate_data = scenario_data["gate_operations"]
+    old_gate_data = old_gate_data[
+        old_gate_data["node"] == get_filter_nodes_for_gate("old", "gate_operations")
+    ]
+    old_flow_data = scenario_data["flow"]
+    old_flow_data = old_flow_data[
+        old_flow_data["node"] == get_filter_nodes_for_gate("old", "flow")
+    ]
+
+    old_full_merged_df = post_process_full_data(
+        old_gate_data, old_flow_data, "old", "old", year=selected_year
+    )
+
+    old_full_merged_df = old_full_merged_df.rename(columns={"value": "velocity"})
+
+    old_hydro_df = post_process_hydro_data(
+        scenario_data["water_levels"], selected_model, "old", selected_year
+    )
+    old_avg_daily_velocity = calc_avg_daily_vel(old_full_merged_df)
+    old_avg_daily_gate = calc_avg_daily_gate(old_full_merged_df)
+    old_total_daily_velocity = calc_avg_len_consec_vel(old_full_merged_df)
+    old_total_daily_gate = calc_avg_len_consec_gate(old_full_merged_df)
 
     # old_full_merged_df = post_process_full_data(multi_model_data, selected_model, "OLD", year=selected_year)
     # old_full_merged_df = old_full_merged_df.rename(columns={"value": "velocity"})
@@ -159,18 +174,18 @@ if scenario_data:
     velocity_summary_data = {
         "Location": [
             location_gate[glc_full_merged_df["gate"][0]],
-            # location_gate[mid_full_merged_df['gate'][0]],
-            # location_gate[old_full_merged_df['gate'][0]]
+            # location_gate[mid_full_merged_df["gate"][0]],
+            location_gate[old_full_merged_df["gate"][0]],
         ],
         f"Average Daily Time (Hours) {glc_avg_daily_velocity['Velocity_Category'][0]}": [
             round(glc_avg_daily_velocity["time_unit"][0], 2),
             # round(mid_avg_daily_velocity['time_unit'][0], 2),
-            # round(old_avg_daily_velocity['time_unit'][0], 2),
+            round(old_avg_daily_velocity["time_unit"][0], 2),
         ],
         f"Average Daily Time (Hours) {glc_avg_daily_velocity['Velocity_Category'][1]}": [
             round(glc_avg_daily_velocity["time_unit"][1], 2),
             # round(mid_avg_daily_velocity['time_unit'][1], 2),
-            # round(old_avg_daily_velocity['time_unit'][1], 2),
+            round(old_avg_daily_velocity["time_unit"][1], 2),
         ],
         f"Average Streak Duration (Hours) {glc_total_daily_velocity['Velocity_Category'][0]}": [
             round(
@@ -178,7 +193,10 @@ if scenario_data:
                 2,
             ),
             # round(mid_total_daily_velocity['daily_average_time_per_consecutive_group'][0], 2),
-            # round(old_total_daily_velocity['daily_average_time_per_consecutive_group'][0], 2),
+            round(
+                old_total_daily_velocity["daily_average_time_per_consecutive_group"][0],
+                2,
+            ),
         ],
         f"Average Streak Duration (Hours) {glc_total_daily_velocity['Velocity_Category'][1]}": [
             round(
@@ -186,7 +204,10 @@ if scenario_data:
                 2,
             ),
             # round(mid_total_daily_velocity['daily_average_time_per_consecutive_group'][1], 2),
-            # round(old_total_daily_velocity['daily_average_time_per_consecutive_group'][1], 2),
+            round(
+                old_total_daily_velocity["daily_average_time_per_consecutive_group"][1],
+                2,
+            ),
         ],
     }
 
@@ -299,28 +320,28 @@ if scenario_data:
     #     use_container_width=True,
     # )
 
-    # data_preview_old.dataframe(
-    #     old_full_merged_df.head(20)
-    #     .style.format(precision=2)
-    #     .set_table_styles(
-    #         [
-    #             {
-    #                 "selector": "thead th",
-    #                 "props": [
-    #                     ("background-color", "#4CAF50"),
-    #                     ("color", "white"),
-    #                     ("text-align", "center"),
-    #                 ],
-    #             },
-    #             {
-    #                 "selector": "tbody tr:hover",
-    #                 "props": [("background-color", "#f5f5f5")],
-    #             },
-    #         ]
-    #     ),
-    #     use_container_width=True,
-    # )
-    #     # st.write("### Gate and Channel Locations")
+    data_preview_old.dataframe(
+        old_full_merged_df.head(20)
+        .style.format(precision=2)
+        .set_table_styles(
+            [
+                {
+                    "selector": "thead th",
+                    "props": [
+                        ("background-color", "#4CAF50"),
+                        ("color", "white"),
+                        ("text-align", "center"),
+                    ],
+                },
+                {
+                    "selector": "tbody tr:hover",
+                    "props": [("background-color", "#f5f5f5")],
+                },
+            ]
+        ),
+        use_container_width=True,
+    )
+    # st.write("### Gate and Channel Locations")
 
     #     # shapefile_paths = [
     #     #     "data-raw/MSS_nodes/dsm2_nodes_newcs_extranodes.shp",
@@ -628,7 +649,7 @@ if scenario_data:
 
 
 else:
-    st.write("Please upload a Pickle file to see the visualization.")
+    st.write(f"Year {selected_year} did not return any data, contact app admin.")
 
     # st.session_state["glc_full_merged_df"] = age
 
