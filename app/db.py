@@ -84,15 +84,18 @@ def get_filter_nodes_for_gate(gate, dataset):
             "water_levels": "dgl",
             "gate_operations": "glc_gateop",
             "flow": "glc_flow_fish",
+            "velocity": "glc",
         },
         "old": {
             "water_levels": "old",
             "gate_operations": "old_gateop",
             "flow": "old_flow_fish",
+            "velocity": "old",
         },
         "mid": {
             "water_levels": "mid",
             "gate_operations": "mid_gateop",
             "flow": "mid_flow_fish",
+            "velocity": "mid"
         },
     }[gate][dataset]
