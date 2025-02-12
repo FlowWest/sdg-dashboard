@@ -102,7 +102,7 @@ if scenario_data and not scenario_year_data.empty:
     # print(glc_vel_data.columns)
 
     glc_full_merged_df = post_process_full_data(
-        glc_gate_data, glc_vel_data, "glc", "glc", year=selected_year
+        glc_gate_data, glc_vel_data, selected_model, "glc", year=selected_year
     )
 
     glc_full_merged_df = glc_full_merged_df.rename(columns={"vel": "velocity"})
@@ -126,7 +126,7 @@ if scenario_data and not scenario_year_data.empty:
     ]
 
     old_full_merged_df = post_process_full_data(
-        old_gate_data, old_vel_data, "old", "old", year=selected_year
+        old_gate_data, old_vel_data, selected_model, "old", year=selected_year
     )
 
     old_full_merged_df = old_full_merged_df.rename(columns={"vel": "velocity"})
@@ -150,7 +150,7 @@ if scenario_data and not scenario_year_data.empty:
     ]
 
     mid_full_merged_df = post_process_full_data(
-        mid_gate_data, mid_vel_data, "mid", "mid", year=selected_year
+        mid_gate_data, mid_vel_data, selected_model, "mid", year=selected_year
     )
 
     mid_full_merged_df = mid_full_merged_df.rename(columns={"vel": "velocity"})
