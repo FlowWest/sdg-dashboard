@@ -108,7 +108,7 @@ if scenario_data and not scenario_year_data.empty:
     glc_full_merged_df = glc_full_merged_df.rename(columns={"vel": "velocity"})
 
     glc_hydro_df = post_process_hydro_data(
-        scenario_data["water_levels"], selected_model, "GLC", selected_year
+        scenario_data["water_levels"], selected_model, "dgl", selected_year
     )
     glc_avg_daily_velocity = calc_avg_daily_vel(glc_full_merged_df)
     glc_avg_daily_gate = calc_avg_daily_gate(glc_full_merged_df)
@@ -156,7 +156,7 @@ if scenario_data and not scenario_year_data.empty:
     mid_full_merged_df = mid_full_merged_df.rename(columns={"vel": "velocity"})
 
     mid_hydro_df = post_process_hydro_data(
-        scenario_data["water_levels"], selected_model, "mid", selected_year
+        scenario_data["water_levels"], selected_model, "mho", selected_year
     )
     mid_avg_daily_velocity = calc_avg_daily_vel(mid_full_merged_df)
     mid_avg_daily_gate = calc_avg_daily_gate(mid_full_merged_df)
@@ -627,7 +627,6 @@ if scenario_data and not scenario_year_data.empty:
     #     st.altair_chart(mid_zoomed_vel_chart[1], use_container_width=True, theme=None)
     # with col3:
     #     st.altair_chart(old_zoomed_vel_chart[1], use_container_width=True, theme=None)
-
     glc_zoomed_hydro_chart = generate_water_level_chart(
         filtered_glc_hydro_df, filtered_glc_df
     )
