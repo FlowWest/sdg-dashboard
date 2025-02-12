@@ -95,16 +95,17 @@ if scenario_data and not scenario_year_data.empty:
     glc_gate_data = glc_gate_data[
         glc_gate_data["node"] == get_filter_nodes_for_gate("glc", "gate_operations")
     ]
-    glc_flow_data = scenario_data["flow"]
-    glc_flow_data = glc_flow_data[
-        glc_flow_data["node"] == get_filter_nodes_for_gate("glc", "flow")
+    glc_vel_data = scenario_data["vel"]
+    glc_vel_data = glc_vel_data[
+        glc_vel_data["location"] == get_filter_nodes_for_gate("glc", "velocity")
     ]
+    # print(glc_vel_data.columns)
 
     glc_full_merged_df = post_process_full_data(
-        glc_gate_data, glc_flow_data, "glc", "glc", year=selected_year
+        glc_gate_data, glc_vel_data, "glc", "glc", year=selected_year
     )
 
-    glc_full_merged_df = glc_full_merged_df.rename(columns={"value": "velocity"})
+    glc_full_merged_df = glc_full_merged_df.rename(columns={"vel": "velocity"})
 
     glc_hydro_df = post_process_hydro_data(
         scenario_data["water_levels"], selected_model, "GLC", selected_year
@@ -119,16 +120,16 @@ if scenario_data and not scenario_year_data.empty:
     old_gate_data = old_gate_data[
         old_gate_data["node"] == get_filter_nodes_for_gate("old", "gate_operations")
     ]
-    old_flow_data = scenario_data["flow"]
-    old_flow_data = old_flow_data[
-        old_flow_data["node"] == get_filter_nodes_for_gate("old", "flow")
+    old_vel_data = scenario_data["vel"]
+    old_vel_data = old_vel_data[
+        old_vel_data["location"] == get_filter_nodes_for_gate("old", "velocity")
     ]
 
     old_full_merged_df = post_process_full_data(
-        old_gate_data, old_flow_data, "old", "old", year=selected_year
+        old_gate_data, old_vel_data, "old", "old", year=selected_year
     )
 
-    old_full_merged_df = old_full_merged_df.rename(columns={"value": "velocity"})
+    old_full_merged_df = old_full_merged_df.rename(columns={"vel": "velocity"})
 
     old_hydro_df = post_process_hydro_data(
         scenario_data["water_levels"], selected_model, "old", selected_year
@@ -143,16 +144,16 @@ if scenario_data and not scenario_year_data.empty:
     mid_gate_data = mid_gate_data[
         mid_gate_data["node"] == get_filter_nodes_for_gate("mid", "gate_operations")
     ]
-    mid_flow_data = scenario_data["flow"]
-    mid_flow_data = mid_flow_data[
-        mid_flow_data["node"] == get_filter_nodes_for_gate("mid", "flow")
+    mid_vel_data = scenario_data["vel"]
+    mid_vel_data = mid_vel_data[
+        mid_vel_data["location"] == get_filter_nodes_for_gate("mid", "velocity")
     ]
 
     mid_full_merged_df = post_process_full_data(
-        mid_gate_data, mid_flow_data, "mid", "mid", year=selected_year
+        mid_gate_data, mid_vel_data, "mid", "mid", year=selected_year
     )
 
-    mid_full_merged_df = mid_full_merged_df.rename(columns={"value": "velocity"})
+    mid_full_merged_df = mid_full_merged_df.rename(columns={"vel": "velocity"})
 
     mid_hydro_df = post_process_hydro_data(
         scenario_data["water_levels"], selected_model, "mid", selected_year
@@ -297,7 +298,8 @@ if scenario_data and not scenario_year_data.empty:
         ["GLC", "MID", "OLD"]
     )
     data_preview_glc.dataframe(
-        glc_full_merged_df[["datetime", "node", "velocity", "unit"]]
+        # glc_full_merged_df[["datetime", "node", "velocity", "unit"]]
+        glc_full_merged_df
         .head(100)
         .style.format(precision=2)
         .set_table_styles(
@@ -495,27 +497,27 @@ if scenario_data and not scenario_year_data.empty:
         (glc_full_merged_df["date"] >= start_date)
         & (glc_full_merged_df["date"] <= end_date)
     ]
-    # filtered_mid_df = mid_full_merged_df[
-    #     (mid_full_merged_df["date"] >= start_date)
-    #     & (mid_full_merged_df["date"] <= end_date)
-    # ]
-    # filtered_old_df = old_full_merged_df[
-    #     (old_full_merged_df["date"] >= start_date)
-    #     & (old_full_merged_df["date"] <= end_date)
-    # ]
+    filtered_mid_df = mid_full_merged_df[
+        (mid_full_merged_df["date"] >= start_date)
+        & (mid_full_merged_df["date"] <= end_date)
+    ]
+    filtered_old_df = old_full_merged_df[
+        (old_full_merged_df["date"] >= start_date)
+        & (old_full_merged_df["date"] <= end_date)
+    ]
 
     filtered_glc_hydro_df = glc_hydro_df[
         (glc_hydro_df["datetime"] >= start_date)
         & (glc_hydro_df["datetime"] <= end_date)
     ]
-    # filtered_mid_hydro_df = mid_hydro_df[
-    #     (mid_hydro_df["datetime"] >= start_date)
-    #     & (mid_hydro_df["datetime"] <= end_date)
-    # ]
-    # filtered_old_hydro_df = old_hydro_df[
-    #     (old_hydro_df["datetime"] >= start_date)
-    #     & (old_hydro_df["datetime"] <= end_date)
-    # ]
+    filtered_mid_hydro_df = mid_hydro_df[
+        (mid_hydro_df["datetime"] >= start_date)
+        & (mid_hydro_df["datetime"] <= end_date)
+    ]
+    filtered_old_hydro_df = old_hydro_df[
+        (old_hydro_df["datetime"] >= start_date)
+        & (old_hydro_df["datetime"] <= end_date)
+    ]
     # #-------------------------------------------------------------------------------------------------------
     summary_stats_title = f"Summary stats from {start_date} to {end_date}."
     filtered_glc_avg_daily_velocity = calc_avg_daily_vel(filtered_glc_df)
@@ -629,12 +631,12 @@ if scenario_data and not scenario_year_data.empty:
     glc_zoomed_hydro_chart = generate_water_level_chart(
         filtered_glc_hydro_df, filtered_glc_df
     )
-    # mid_zoomed_hydro_chart = generate_water_level_chart(
-    #     filtered_mid_hydro_df, filtered_mid_df
-    # )
-    # old_zoomed_hydro_chart = generate_water_level_chart(
-    #     filtered_old_hydro_df, filtered_old_df
-    # )
+    mid_zoomed_hydro_chart = generate_water_level_chart(
+        filtered_mid_hydro_df, filtered_mid_df
+    )
+    old_zoomed_hydro_chart = generate_water_level_chart(
+        filtered_old_hydro_df, filtered_old_df
+    )
     # st.write("#")
     col1, col2, col3 = viz_2_tab2.columns([3, 3, 3], gap="small")
     with col1:
@@ -646,24 +648,24 @@ if scenario_data and not scenario_year_data.empty:
             file_name="glc_hydro_df.csv",
             mime="text/csv",
         )
-    # with col2:
-    #     st.altair_chart(mid_zoomed_hydro_chart, use_container_width=True, theme=None)
-    #     csv = convert_df(mid_hydro_df)
-    #     st.download_button(
-    #         label="Download MID Hydro Data",
-    #         data=csv,
-    #         file_name="mid_hydro_df.csv",
-    #         mime="text/csv",
-    #     )
-    # with col3:
-    #     st.altair_chart(old_zoomed_hydro_chart, use_container_width=True, theme=None)
-    #     csv = convert_df(old_hydro_df)
-    #     st.download_button(
-    #         label="Download OLD Hydro Data",
-    #         data=csv,
-    #         file_name="OLD_hydro_df.csv",
-    #         mime="text/csv",
-    #     )
+    with col2:
+        st.altair_chart(mid_zoomed_hydro_chart, use_container_width=True, theme=None)
+        csv = convert_df(mid_hydro_df)
+        st.download_button(
+            label="Download MID Hydro Data",
+            data=csv,
+            file_name="mid_hydro_df.csv",
+            mime="text/csv",
+        )
+    with col3:
+        st.altair_chart(old_zoomed_hydro_chart, use_container_width=True, theme=None)
+        csv = convert_df(old_hydro_df)
+        st.download_button(
+            label="Download OLD Hydro Data",
+            data=csv,
+            file_name="OLD_hydro_df.csv",
+            mime="text/csv",
+        )
     # st.altair_chart(combined_chart, use_container_width=False, theme=None)
     # st.altair_chart(combined_elev_chart, use_container_width=False, theme=None)
     # st.altair_chart(joint_chart, use_container_width=False, theme=None)

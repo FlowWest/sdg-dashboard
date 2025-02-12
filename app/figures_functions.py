@@ -73,6 +73,7 @@ def post_process_gateop(
 
 def post_process_velocity(data, model, gate, year=None, start_year=None, end_year=None):
     vel_zoom_df = data
+    print(vel_zoom_df.head())
     if year:
         vel_zoom_df["year"] = vel_zoom_df["datetime"].dt.year
         vel_zoom_df = vel_zoom_df[vel_zoom_df["year"] == year]
@@ -83,7 +84,7 @@ def post_process_velocity(data, model, gate, year=None, start_year=None, end_yea
             (vel_zoom_df["year"] >= start_year) & (vel_zoom_df["year"] <= end_year)
         ]
     vel_zoom_df["Velocity_Category"] = np.where(
-        vel_zoom_df["value"] >= 8, "Over 8ft/s", "Under 8ft/s"
+        vel_zoom_df["vel"] >= 8, "Over 8ft/s", "Under 8ft/s"
     )
     # .shift shift value down and compare each value with the previous row; increase value when rows are different
     vel_zoom_df["consecutive_groups"] = (
@@ -121,13 +122,13 @@ def post_process_velocity(data, model, gate, year=None, start_year=None, end_yea
 
 
 def post_process_full_data(
-    gate_data, flow_data, model, gate, year=None, start_year=None, end_year=None
+    gate_data, vel_data, model, gate, year=None, start_year=None, end_year=None
 ):
     merged_gate_df = post_process_gateop(
         gate_data, model, gate, year, start_year, end_year
     )
     merged_vel_df = post_process_velocity(
-        flow_data, model, gate, year, start_year, end_year
+        vel_data, model, gate, year, start_year, end_year
     )
     full_merged_df = pd.merge(
         merged_vel_df, merged_gate_df, left_on="datetime", right_on="datetime"
