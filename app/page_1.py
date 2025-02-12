@@ -29,7 +29,6 @@ def load_scenario_data(scenario, year):
 
 
 st.title("Exploratory Data Visualizations for SDG Analysis")
-st.write("Upload your data and explore interactive visualizations.")
 
 years = [2016, 2017, 2018, 2019]
 
@@ -674,4 +673,3 @@ else:
     st.write(f"Year {selected_year} did not return any data, contact app admin.")
 
     # st.session_state["glc_full_merged_df"] = age
-
