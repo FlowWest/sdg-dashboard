@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-
 from sqlalchemy import create_engine, text
 
 
@@ -12,13 +11,19 @@ def get_db_connection():
 
 engine = get_db_connection()
 
-
 def get_all_scenarios():
     q = """ SELECT name as "Scenario", comments as "Comments" from scenarios; """
     return pd.read_sql(q, engine)
 
+def get_available_years(scenario):
+    q = text(
+        """SELECT unnest(available_years) FROM scenarios WHERE name = :scenario ; 
+        """)
+    params = {"scenario": scenario}
+    df = pd.read_sql(q, engine, params=params)  # Get DataFrame
+    return df.iloc[:, 0].tolist()  # Convert first column to list
 
-def get_scenario_year_data(scenario, year):
+def get_scenario_year_data(scenario="FPV1Ma", year=2016):
     q = text(""" 
         SELECT * from dsm2 
         WHERE

@@ -12,84 +12,71 @@ from db import (
     get_all_scenarios,
     generate_scenario_year_data,
     get_filter_nodes_for_gate,
+    get_available_years
 )
-
-
 # from streamlit_folium import st_folium, folium_static
 #
-
 
 @st.cache_data
 def load_scenario_data(scenario, year):
     """Cache the scenario data loading to prevent unnecessary database queries"""
     scenario_year_data = get_scenario_year_data(scenario, year)
-    scenarios = get_all_scenarios()
     scenario_data = generate_scenario_year_data(scenario_year_data)
-    return scenario_year_data, scenarios, scenario_data
-
+    return scenario_year_data, scenario_data
 
 st.title("Exploratory Data Visualizations for SDG Analysis")
 
-years = [2016, 2017, 2018, 2019]
-
+# Initialize session state variables if not set
 if "previous_year" not in st.session_state:
     st.session_state.previous_year = None
-
+if "previous_scenario" not in st.session_state:
+    st.session_state.previous_scenario = None
 if "scenario_data" not in st.session_state:
     st.session_state.scenario_data = None
-    st.session_state.scenarios = None
     st.session_state.scenario_year_data = None
+if "available_years" not in st.session_state:
+    st.session_state.available_years = []
 
-selected_year = st.sidebar.selectbox("Select Year:", years)
+# Step 1: Load available scenarios first
+scenarios = get_all_scenarios()
+scenario_list = scenarios["Scenario"].tolist()
 
-selected_year = int(selected_year)
-if (
-    st.session_state.scenario_data is None
-    or selected_year != st.session_state.previous_year
-):
-    with st.spinner(f"Loading scenario data for {selected_year}..."):
-        scenario_year_data, scenarios, scenario_data = load_scenario_data(
-            "FPV1Ma", selected_year
-        )
-        st.session_state.scenario_data = scenario_data
-        st.session_state.scenarios = scenarios
-        st.session_state.scenario_year_data = scenario_year_data
-        st.session_state.previous_year = selected_year
+# Step 2: Scenario selection (mandatory before year selection)
+selected_model = st.sidebar.selectbox("Select Scenario:", scenario_list, key="scenario_select")
 
-# cache data
+# Step 3: Load years dynamically based on selected scenario
+if selected_model != st.session_state.previous_scenario:
+    with st.spinner(f"Fetching available years for {selected_model}..."):
+        # Assuming years are extracted dynamically from the scenario data
+        st.session_state.available_years = get_available_years(selected_model)  
+        st.session_state.previous_scenario = selected_model
+        st.session_state.previous_year = None  # Reset year when scenario changes
+
+# Step 4: Year selection (only after scenario is chosen)
+if st.session_state.available_years:
+    selected_year = st.sidebar.selectbox("Select Year:", st.session_state.available_years, key="year_select")
+else:
+    selected_year = None
+
+# Step 5: Load scenario data only when both scenario & year are selected
+if selected_model and selected_year:
+    if (
+        st.session_state.scenario_data is None
+        or selected_year != st.session_state.previous_year
+        or selected_model != st.session_state.previous_scenario
+    ):
+        with st.spinner(f"Loading {selected_model} data for {selected_year}..."):
+            scenario_year_data, scenario_data = load_scenario_data(selected_model, selected_year)
+            st.session_state.scenario_data = scenario_data
+            st.session_state.scenario_year_data = scenario_year_data
+            st.session_state.previous_year = selected_year
+
+# Retrieve cached data
 scenario_data = st.session_state.scenario_data
-scenarios = st.session_state.scenarios
 scenario_year_data = st.session_state.scenario_year_data
-
-
+# --------------------------------------------------------------------------------------------------------------------------------
+# Data wrangling
 if scenario_data and not scenario_year_data.empty:
-    # --------------------------------------------------------------------------------------------------------------------------------
-    # Data wrangling
-    models = scenarios["Scenario"]
-    with st.sidebar:
-        selected_model = st.selectbox("Select Model:", models)
-        # selection_range = st.radio(
-        #     "Enter Selection Range",
-        #     ["Single Year", "Multi Year"],
-        #     captions=[
-        #         "Single year selection",
-        #         "Multiple year selection"
-        #     ],
-        # )
-        years = scenario_data["water_levels"]["year"].unique().tolist()
-        # if selection_range == "Single Year":
-        # years.append("None")
-        # if selected_option != "None":
-        # else:
-        #     selected_year = None
-        # else:
-        #     selected_start_option = st.selectbox('Select Start Year:', years)
-        # # if selected_option != "None":
-        #     selected_start_year = int(selected_start_option)
-        #     selected_end_option = st.selectbox('Select End Year:', years)
-        #     selected_end_year = int(selected_end_option)
-    # glc_filtered = scenario_year_data()
-
     # GLC wranging ------------------------------------
     glc_gate_data = scenario_data["gate_operations"]
     glc_gate_data = glc_gate_data[
@@ -424,7 +411,6 @@ if scenario_data and not scenario_year_data.empty:
     )
     # Altair Visualization
     # st.write('#')
-    # st.altair_chart(combined_chart, use_container_width=True, theme=None)
     col1, col2, col3 = viz_1_tab2.columns([3, 3, 3], gap="small")
     with col1:
         st.altair_chart(glc_chart, use_container_width=True, theme=None)
@@ -455,15 +441,6 @@ if scenario_data and not scenario_year_data.empty:
         )
     st.write("###")
     st.write("### Flow Velocity and Gate Status Zoomed")
-    # drop_down_week = glc_full_merged_df['week'].unique().tolist()
-    # week_to_date_mapping = glc_full_merged_df.groupby("week")["date"].min()
-    # week_to_date_dict = week_to_date_mapping.to_dict()
-    # drop_down_options = [
-    #     f"Week {week} (Start Date: {date})"
-    #     for week, date in week_to_date_mapping.items()
-    # ]
-    # selected_option = st.selectbox('Select Week:', drop_down_options)
-    # selected_week = int(selected_option.split()[1])
     default_start_date = pd.to_datetime(glc_full_merged_df["date"].min())
     default_end_date = pd.to_datetime(
         glc_full_merged_df["date"].min()
@@ -518,6 +495,7 @@ if scenario_data and not scenario_year_data.empty:
         (old_hydro_df["datetime"] >= start_date)
         & (old_hydro_df["datetime"] <= end_date)
     ]
+    # print(filtered_glc_df)
     # #-------------------------------------------------------------------------------------------------------
     summary_stats_title = f"Summary stats from {start_date} to {end_date}."
     filtered_glc_avg_daily_velocity = calc_avg_daily_vel(filtered_glc_df)
@@ -529,10 +507,6 @@ if scenario_data and not scenario_year_data.empty:
     filtered_mid_avg_daily_velocity = calc_avg_daily_vel(filtered_mid_df)
     filtered_mid_avg_daily_gate = calc_avg_daily_gate(filtered_mid_df)
 
-    # weekly_daily_velocity = filtered_df.groupby(["date", "Velocity_Category"])["time_unit"].sum().reset_index()
-    # weekly_avg_daily_velocity = weekly_daily_velocity.groupby("Velocity_Category")['time_unit'].mean().reset_index()
-    # weekly_daily_gate = filtered_df.groupby(["date","gate_status"])["time_unit"].sum().reset_index()
-    # weekly_avg_daily_gate = weekly_daily_gate.groupby("gate_status")['time_unit'].mean().reset_index()
     weekly_min_date = min(filtered_glc_df["date"])
     weekly_max_date = max(filtered_glc_df["date"])
 
@@ -547,54 +521,38 @@ if scenario_data and not scenario_year_data.empty:
             round(filtered_mid_avg_daily_velocity["time_unit"][0], 2),
             round(filtered_old_avg_daily_velocity["time_unit"][0], 2),
         ],
-        f"Average Daily Time (Hours) {filtered_glc_avg_daily_velocity['Velocity_Category'][1]}": [
-            round(filtered_glc_avg_daily_velocity["time_unit"][1], 2),
-            round(filtered_mid_avg_daily_velocity["time_unit"][1], 2),
-            round(filtered_old_avg_daily_velocity["time_unit"][1], 2),
-        ],
         f"Average Daily {filtered_glc_avg_daily_gate['gate_status'][0]} Time (Hours) for gate": [
             round(filtered_glc_avg_daily_gate["time_unit"][0], 2),
             round(filtered_mid_avg_daily_gate["time_unit"][0], 2),
             round(filtered_old_avg_daily_gate["time_unit"][0], 2),
-        ],
-        f"Average Daily {filtered_glc_avg_daily_gate['gate_status'][1]} Time (Hours) for gate": [
-            round(filtered_glc_avg_daily_gate["time_unit"][1], 2),
-            round(filtered_mid_avg_daily_gate["time_unit"][1], 2),
-            round(filtered_old_avg_daily_gate["time_unit"][1], 2),
-        ],
-    }
-    # def color_coding(row):
-    #     if row['Average Daily Time (Hours) Over 8ft/s'] > 15:
-    #         return ['background-color: red'] * len(row)
-    #     else:
-    #         return ['background-color: green'] * len(row)
+        ]
+        }
+    if len(filtered_glc_avg_daily_velocity["Velocity_Category"]) > 1:
+        weekly_summary_data[
+                f"Average Daily Time (Hours) {filtered_glc_avg_daily_velocity['Velocity_Category'][1]}"
+            ] = [
+                round(filtered_glc_avg_daily_velocity["time_unit"][1], 2) if len(filtered_glc_avg_daily_velocity["time_unit"]) > 1 else 0,
+                round(filtered_mid_avg_daily_velocity["time_unit"][1], 2) if len(filtered_mid_avg_daily_velocity["time_unit"]) > 1 else 0,
+                round(filtered_old_avg_daily_velocity["time_unit"][1], 2) if len(filtered_old_avg_daily_velocity["time_unit"]) > 1 else 0,
+            ]
+    if len(filtered_glc_avg_daily_gate["gate_status"]) > 1:
+        weekly_summary_data[
+            f"Average Daily {filtered_glc_avg_daily_gate['gate_status'][1]} Time (Hours) for gate"
+        ] = [
+            round(filtered_glc_avg_daily_gate["time_unit"][1], 2) if len(filtered_glc_avg_daily_gate["time_unit"]) > 1 else 0,
+            round(filtered_mid_avg_daily_gate["time_unit"][1], 2) if len(filtered_mid_avg_daily_gate["time_unit"]) > 1 else 0,
+            round(filtered_old_avg_daily_gate["time_unit"][1], 2) if len(filtered_old_avg_daily_gate["time_unit"]) > 1 else 0,
+        ]
     # Create a DataFrame
     viz_2_tab1, viz_2_tab2 = st.tabs(["🗃 Data Summary", "📈 Chart"])
-    # try:
     weekly_summary_df = pd.DataFrame(weekly_summary_data)
-    # styled_df = weekly_summary_df.style.apply(color_coding, axis=1)
-    # styled_html = styled_df.to_html()
-
-    # weekly_summary_df.iloc[:, 1:4] = weekly_summary_df[1:].apply(pd.to_numeric)
     viz_2_tab1.write(f"##### {summary_stats_title}")
-    # .set_properties(**{'font-weight': 'bold'}, subset=df.columns
-    # st.markdown(
-    #     styled_html,
-    #     unsafe_allow_html=True
-    # )
     viz_2_tab1.dataframe(
         weekly_summary_df.style.highlight_max(
             subset=weekly_summary_df.columns[1:], color="#ffffc5"
         ).format(precision=2)
     )
-    # except:
-    # "Missing data to generate summary data for this time period. "
     # #-------------------------------------------------------------------------------------------------------
-    # # Create an Altair chart using the filtered data
-    # # Define a colorblind-friendly palette
-    # Display the chart in Streamlit
-
-    # st.altair_chart(daily_velocity, use_container_width=False)
     glc_zoomed_vel_chart = generate_zoomed_velocity_charts(filtered_glc_df)
     mid_zoomed_vel_chart = generate_zoomed_velocity_charts(filtered_mid_df)
     old_zoomed_vel_chart = generate_zoomed_velocity_charts(filtered_old_df)
@@ -619,14 +577,6 @@ if scenario_data and not scenario_year_data.empty:
             # use_container_width=True,
             theme=None,
         )
-    # col1, col2, col3 = st.columns([10, 10, 10], gap="small")
-    # with col1:
-    #     st.altair_chart(glc_zoomed_vel_chart[1], use_container_width=True, theme=None)
-    #     # st.altair_chart(glc_zoomed_vel_chart[1], use_container_width=True, theme=None)
-    # with col2:
-    #     st.altair_chart(mid_zoomed_vel_chart[1], use_container_width=True, theme=None)
-    # with col3:
-    #     st.altair_chart(old_zoomed_vel_chart[1], use_container_width=True, theme=None)
     glc_zoomed_hydro_chart = generate_water_level_chart(
         filtered_glc_hydro_df, filtered_glc_df
     )
@@ -665,11 +615,6 @@ if scenario_data and not scenario_year_data.empty:
             file_name="OLD_hydro_df.csv",
             mime="text/csv",
         )
-    # st.altair_chart(combined_chart, use_container_width=False, theme=None)
-    # st.altair_chart(combined_elev_chart, use_container_width=False, theme=None)
-    # st.altair_chart(joint_chart, use_container_width=False, theme=None)
-
-
 else:
     st.write(f"Year {selected_year} did not return any data, contact app admin.")
 

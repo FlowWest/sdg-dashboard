@@ -769,6 +769,7 @@ def generate_water_level_chart(filtered_hydro_df, filtered_merged_df):
     gate = filtered_merged_df["gate"].unique()[0]
     model = filtered_merged_df["model"].unique()[0]
     shared_y_scale = alt.Scale(domain=[0, 8])
+    # shared_x_scale = alt.Scale(domain=[min_datetime, max_datetime])
     interval = alt.selection_interval(
         encodings=["x"], mark=alt.BrushConfig(fill="blue")
     )
@@ -780,6 +781,7 @@ def generate_water_level_chart(filtered_hydro_df, filtered_merged_df):
                 "yearmonthdatehoursminutes(datetime):T",
                 title="Date",
                 axis=alt.Axis(format="%b %d, %Y", labelAngle=-45),
+                # scale=shared_x_scale
             ),
             y=alt.Y("water_level:Q", title="Feet", scale=shared_y_scale),
             # color='scenario:N'
