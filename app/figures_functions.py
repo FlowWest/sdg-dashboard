@@ -73,7 +73,6 @@ def post_process_gateop(
 
 def post_process_velocity(data, model, gate, year=None, start_year=None, end_year=None):
     vel_zoom_df = data
-    print(vel_zoom_df.head())
     if year:
         vel_zoom_df["year"] = vel_zoom_df["datetime"].dt.year
         vel_zoom_df = vel_zoom_df[vel_zoom_df["year"] == year]
@@ -156,6 +155,7 @@ def post_process_hydro_data(
     hydro_df["time_unit"] = 0.25
     hydro_df = hydro_df.rename(columns={"value": "water_level"})
     hydro_df["week"] = hydro_df["datetime"].dt.isocalendar().week
+    hydro_df = hydro_df[hydro_df.node == gate]
     return hydro_df
 
 
@@ -769,6 +769,7 @@ def generate_water_level_chart(filtered_hydro_df, filtered_merged_df):
     gate = filtered_merged_df["gate"].unique()[0]
     model = filtered_merged_df["model"].unique()[0]
     shared_y_scale = alt.Scale(domain=[0, 8])
+    # shared_x_scale = alt.Scale(domain=[min_datetime, max_datetime])
     interval = alt.selection_interval(
         encodings=["x"], mark=alt.BrushConfig(fill="blue")
     )
@@ -780,6 +781,7 @@ def generate_water_level_chart(filtered_hydro_df, filtered_merged_df):
                 "yearmonthdatehoursminutes(datetime):T",
                 title="Date",
                 axis=alt.Axis(format="%b %d, %Y", labelAngle=-45),
+                # scale=shared_x_scale
             ),
             y=alt.Y("water_level:Q", title="Feet", scale=shared_y_scale),
             # color='scenario:N'
