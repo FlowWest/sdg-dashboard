@@ -96,6 +96,6 @@ def get_filter_nodes_for_gate(gate, dataset):
             "water_levels": "mid",
             "gate_operations": "mid_gateop",
             "flow": "mid_flow_fish",
-            "velocity": "mid"
+            "velocity": "mid",
         },
     }[gate][dataset]
