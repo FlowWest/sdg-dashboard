@@ -73,7 +73,9 @@ if selected_model and selected_year:
 
 # Retrieve cached data
 scenario_data = st.session_state.scenario_data
+print(scenario_data)
 scenario_year_data = st.session_state.scenario_year_data
+print(scenario_year_data)
 # --------------------------------------------------------------------------------------------------------------------------------
 # Data wrangling
 if scenario_data and not scenario_year_data.empty:
