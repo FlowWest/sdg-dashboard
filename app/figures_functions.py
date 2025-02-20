@@ -3,7 +3,7 @@ import altair as alt
 from pandas import DataFrame
 import numpy as np
 import streamlit as st
-import geopandas as gpd
+# import geopandas as gpd
 import folium
 from streamlit_folium import st_folium
 
