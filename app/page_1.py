@@ -179,26 +179,31 @@ if scenario_data and not scenario_year_data.empty:
             round(mid_avg_daily_velocity["time_unit"][0], 2),
             round(old_avg_daily_velocity["time_unit"][0], 2),
         ],
-        f"Average Daily Time (Hours) {glc_avg_daily_velocity['Velocity_Category'][1]}": [
-            round(glc_avg_daily_velocity["time_unit"][1], 2),
-            round(mid_avg_daily_velocity["time_unit"][1], 2),
-            round(old_avg_daily_velocity["time_unit"][1], 2),
-        ],
         f"Average Streak Duration (Hours) {glc_total_daily_velocity['Velocity_Category'][0]}": [
-            round(
-                glc_total_daily_velocity["daily_average_time_per_consecutive_group"][0],
-                2,
-            ),
-            round(
-                mid_total_daily_velocity["daily_average_time_per_consecutive_group"][0],
-                2,
-            ),
-            round(
-                old_total_daily_velocity["daily_average_time_per_consecutive_group"][0],
-                2,
-            ),
-        ],
-        f"Average Streak Duration (Hours) {glc_total_daily_velocity['Velocity_Category'][1]}": [
+        round(
+            glc_total_daily_velocity["daily_average_time_per_consecutive_group"][0],
+            2,
+        ),
+        round(
+            mid_total_daily_velocity["daily_average_time_per_consecutive_group"][0],
+            2,
+        ),
+        round(
+            old_total_daily_velocity["daily_average_time_per_consecutive_group"][0],
+            2,
+        ),
+        ]}
+    if len(glc_avg_daily_velocity["Velocity_Category"]) > 1:
+        velocity_summary_data[
+                f"Average Daily Time (Hours) {glc_avg_daily_velocity['Velocity_Category'][1]}"
+            ] = [
+                round(glc_avg_daily_velocity["time_unit"][1], 2) if len(glc_avg_daily_velocity["time_unit"]) > 1 else 0,
+                round(mid_avg_daily_velocity["time_unit"][1], 2) if len(mid_avg_daily_velocity["time_unit"]) > 1 else 0,
+                round(old_avg_daily_velocity["time_unit"][1], 2) if len(old_avg_daily_velocity["time_unit"]) > 1 else 0,
+            ]
+    if len(glc_total_daily_velocity['Velocity_Category']) > 1:
+        velocity_summary_data[
+            f"Average Streak Duration (Hours) {glc_total_daily_velocity['Velocity_Category'][1]}"] = [
             round(
                 glc_total_daily_velocity["daily_average_time_per_consecutive_group"][1],
                 2,
@@ -210,9 +215,9 @@ if scenario_data and not scenario_year_data.empty:
             round(
                 old_total_daily_velocity["daily_average_time_per_consecutive_group"][1],
                 2,
-            ),
-        ],
-    }
+            )]
+
+
 
     gate_summary_data = {
         "Location": [
@@ -225,11 +230,6 @@ if scenario_data and not scenario_year_data.empty:
             round(mid_avg_daily_gate["time_unit"][0], 2),
             round(old_avg_daily_gate["time_unit"][0], 2),
         ],
-        f"Average Daily {glc_avg_daily_gate['gate_status'][1]} Time (Hours) for gate": [
-            round(glc_avg_daily_gate["time_unit"][1], 2),
-            round(mid_avg_daily_gate["time_unit"][1], 2),
-            round(old_avg_daily_gate["time_unit"][1], 2),
-        ],
         f"Average {glc_total_daily_gate['gate_status'][0]} Duration (Hours) Per Streak": [
             round(
                 glc_total_daily_gate["daily_average_time_per_consecutive_gate"][0], 2
@@ -240,8 +240,19 @@ if scenario_data and not scenario_year_data.empty:
             round(
                 old_total_daily_gate["daily_average_time_per_consecutive_gate"][0], 2
             ),
-        ],
-        f"Average {glc_total_daily_gate['gate_status'][1]} Duration (Hours) Per Streak": [
+        ]}
+    if len(glc_avg_daily_gate["gate_status"]) > 1:
+        gate_summary_data[
+            f"Average Daily {glc_avg_daily_gate['gate_status'][1]} Time (Hours) for gate"
+        ] = [
+            round(glc_avg_daily_gate["time_unit"][1], 2) if len(glc_avg_daily_gate["time_unit"]) > 1 else 0,
+            round(mid_avg_daily_gate["time_unit"][1], 2) if len(mid_avg_daily_gate["time_unit"]) > 1 else 0,
+            round(old_avg_daily_gate["time_unit"][1], 2) if len(old_avg_daily_gate["time_unit"]) > 1 else 0,
+        ]   
+
+    if len(glc_total_daily_gate['gate_status']) > 1:
+        gate_summary_data[
+            f"Average {glc_total_daily_gate['gate_status'][1]} Duration (Hours) Per Streak"] = [
             round(
                 glc_total_daily_gate["daily_average_time_per_consecutive_gate"][1], 2
             ),
@@ -251,8 +262,7 @@ if scenario_data and not scenario_year_data.empty:
             round(
                 old_total_daily_gate["daily_average_time_per_consecutive_gate"][1], 2
             ),
-        ],
-    }
+        ]
 
     min_max_summary = {
         "Location": [
@@ -511,6 +521,7 @@ if scenario_data and not scenario_year_data.empty:
 
     weekly_min_date = min(filtered_glc_df["date"])
     weekly_max_date = max(filtered_glc_df["date"])
+
 
     weekly_summary_data = {
         "Location": [
