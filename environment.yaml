@@ -27,6 +27,7 @@ dependencies:
   - packaging
   - pandas
   - pillow
+  - plotly
   - protobuf
   - psycopg2-binary
   - pyarrow
