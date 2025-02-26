@@ -277,17 +277,17 @@ if submit_button:
             "Location": [
                 location_gate[glc_vel_gate_data["full_merged_df"]["gate"][0]],
                 location_gate[mid_vel_gate_data["full_merged_df"]["gate"][0]],
-                location_gate[mid_vel_gate_data["full_merged_df"]["gate"][0]],
+                location_gate[old_vel_gate_data["full_merged_df"]["gate"][0]],
             ],
             "Minimum velocity through fish passage (ft/s)": [
                 round(min(glc_vel_gate_data["full_merged_df"]["velocity"]), 2),
                 round(min(mid_vel_gate_data["full_merged_df"]["velocity"]), 2),
-                round(min(mid_vel_gate_data["full_merged_df"]["velocity"]), 2),
+                round(min(old_vel_gate_data["full_merged_df"]["velocity"]), 2),
             ],
             "Maximum velocity through fish passage (ft/s)": [
                 round(max(glc_vel_gate_data["full_merged_df"]["velocity"]), 2),
                 round(max(mid_vel_gate_data["full_merged_df"]["velocity"]), 2),
-                round(max(mid_vel_gate_data["full_merged_df"]["velocity"]), 2),
+                round(max(old_vel_gate_data["full_merged_df"]["velocity"]), 2),
             ],
         }
 
