@@ -50,3 +50,4 @@ tzdata
 urllib3
 watchdog
 xyzservices
+plotly
