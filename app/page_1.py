@@ -221,9 +221,9 @@ if scenario_data and not scenario_year_data.empty:
 
     gate_summary_data = {
         "Location": [
-            glc_full_merged_df["gate"][0],
-            mid_full_merged_df["gate"][0],
-            old_full_merged_df["gate"][0],
+            location_gate[glc_full_merged_df["gate"][0]],
+            location_gate[mid_full_merged_df["gate"][0]],
+            location_gate[old_full_merged_df["gate"][0]],
         ],
         f"Average Daily {glc_avg_daily_gate['gate_status'][0]} Time (Hours) for gate": [
             round(glc_avg_daily_gate["time_unit"][0], 2),
