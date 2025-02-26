@@ -459,7 +459,7 @@ def generate_velocity_gate_charts(full_merged_df, legend=None):
 
 
 # @st.cache_data
-def generate_zoomed_velocity_charts(filtered_merged_df):
+def generate_zoomed_velocity_charts(filtered_merged_df, min_velocity, max_velocity):
     color_palette = {
         "Velocity_Category": {
             "Over 8ft/s": "#a6cee3",
@@ -469,7 +469,7 @@ def generate_zoomed_velocity_charts(filtered_merged_df):
     }
     gate = filtered_merged_df["gate"].unique()[0]
     model = filtered_merged_df["model"].unique()[0]
-    shared_y_scale = alt.Scale(domain=[-5, 17])
+    shared_y_scale = alt.Scale(domain=[min_velocity, max_velocity])
 
     interval = alt.selection_interval(
         encodings=["x"], mark=alt.BrushConfig(fill="blue")
