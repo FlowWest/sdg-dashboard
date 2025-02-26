@@ -10,10 +10,10 @@ pg = st.navigation(
             st.Page("page_2.py", title="Scenario Comparison"),
             # st.Page("page_3.py", title="20-25 Year Historically Based Simulation"),
         ],
-        "CalSim Based Scenario": [
-            st.Page("page_4.py", title="100 Year CalSim Based Simulation")
-        ],
-        "Data Explorer": [st.Page("data_explorer.py", title="Data Explorer")],
+        # "CalSim Based Scenario": [
+        #     st.Page("page_4.py", title="100 Year CalSim Based Simulation")
+        # ],
+        # "Data Explorer": [st.Page("data_explorer.py", title="Data Explorer")],
         "Scenario Inventory": [
             st.Page("scenario_inventory.py", title="Scenario Inventory")
         ],
