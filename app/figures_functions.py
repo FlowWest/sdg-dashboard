@@ -614,11 +614,11 @@ def generate_zoomed_velocity_charts(filtered_merged_df):
     velocity_duration = velocity_duration.properties(width=200, height=100)
     gate_duration = gate_duration.properties(width=200, height=100)
 
-    horizontal_text_summary = alt.hconcat(velocity, velocity_duration)
+    horizontal_text_summary = alt.vconcat(velocity, velocity_duration)
     text_summary = alt.vconcat(horizontal_text_summary, gate_duration)
 
     combined_chart = (
-        alt.vconcat(
+        alt.hconcat(
             layered_chart,
             # velocity
             text_summary,
