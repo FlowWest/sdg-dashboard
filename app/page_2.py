@@ -3,8 +3,8 @@ import pandas as pd
 import altair as alt
 import pickle
 from figures_functions import *
-import plotly_express as px
 import plotly.figure_factory as ff
+import plotly.express as px
 
 
 # import plotly.express as px
