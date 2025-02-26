@@ -118,7 +118,7 @@ def generate_vel_gate_data(
 
 
 # Initialize Streamlit app
-st.title("Exploratory Multi-Year Data Visualizations")
+st.title("Scenario Comparison")
 
 if "previous_year_1" not in st.session_state:
     st.session_state.previous_year_1 = None
@@ -178,31 +178,58 @@ if submit_button:
         selected_model_2, selected_year_2
     )
 
+    node_list = ["glc_flow_fish", "old_flow_fish", "mid_flow_fish"]
+
+    node_data_1 = scenario_year_data_1[scenario_year_data_1["node"].isin(node_list)]
+    node_data_1["datetime"] = pd.to_datetime(node_data_1["datetime"])
+    node_data_1_filtered = node_data_1[
+        (node_data_1["datetime"].dt.month >= 5)
+        & (node_data_1["datetime"].dt.month <= 11)
+    ]
+
+    node_data_2 = scenario_year_data_2[scenario_year_data_2["node"].isin(node_list)]
+    node_data_2["datetime"] = pd.to_datetime(node_data_2["datetime"])
+    node_data_2_filtered = node_data_2[
+        (node_data_2["datetime"].dt.month >= 5)
+        & (node_data_2["datetime"].dt.month <= 11)
+    ]
+
+    month_names = {
+        5: "May",
+        6: "Jun",
+        7: "Jul",
+        8: "Aug",
+        9: "Sep",
+        10: "Oct",
+        11: "Nov",
+    }
+
+    node_data_1_filtered["month_name"] = node_data_1_filtered["datetime"].dt.month.map(
+        month_names
+    )
+    node_data_2_filtered["month_name"] = node_data_2_filtered["datetime"].dt.month.map(
+        month_names
+    )
+
+    if not node_data_1_filtered.empty and not node_data_2_filtered.empty:
+        min_y = min(
+            node_data_1_filtered["value"].min(), node_data_2_filtered["value"].min()
+        )
+        max_y = max(
+            node_data_1_filtered["value"].max(), node_data_2_filtered["value"].max()
+        )
+
+        y_range_padding = (max_y - min_y) * 0.05
+        y_min = min_y - y_range_padding
+        y_max = max_y + y_range_padding
+
+        y_range = [y_min, y_max]
+    else:
+        y_range = None
+
     with col1:
         st.success(f"Scenario 1 Loaded: {selected_model_1} ({selected_year_1})")
         st.write(scenario_data_1["flow"], use_container_width=True)
-
-        node_list = ["glc_flow_fish", "old_flow_fish", "mid_flow_fish"]
-        node_data_1 = scenario_year_data_1[scenario_year_data_1["node"].isin(node_list)]
-
-        node_data_1["datetime"] = pd.to_datetime(node_data_1["datetime"])
-        node_data_1_filtered = node_data_1[
-            (node_data_1["datetime"].dt.month >= 5)
-            & (node_data_1["datetime"].dt.month <= 11)
-        ]
-
-        month_names = {
-            5: "May",
-            6: "Jun",
-            7: "Jul",
-            8: "Aug",
-            9: "Sep",
-            10: "Oct",
-            11: "Nov",
-        }
-        node_data_1_filtered["month_name"] = node_data_1_filtered[
-            "datetime"
-        ].dt.month.map(month_names)
 
         if not node_data_1_filtered.empty:
             fig1 = px.box(
@@ -233,6 +260,7 @@ if submit_button:
                 ),
                 yaxis_title="Flow (CFS)",
                 xaxis_title="Month",
+                yaxis=dict(range=y_range),
             )
 
             fig1_1 = px.violin(
@@ -244,6 +272,7 @@ if submit_button:
                 category_orders={"month_name": list(month_names.values())},
                 title="Flow Distribution (Violin Plot)",
             )
+            fig1_1.update_layout(yaxis=dict(range=y_range))
 
             st.plotly_chart(fig1, use_container_width=True)
             st.plotly_chart(fig1_1, use_container_width=True)
@@ -456,20 +485,6 @@ if submit_button:
         st.success(f"Scenario 2 Loaded: {selected_model_2} ({selected_year_2})")
         st.dataframe(scenario_data_2["flow"], use_container_width=True)
 
-        node_list = ["glc_flow_fish", "old_flow_fish", "mid_flow_fish"]
-        node_data_2 = scenario_year_data_2[scenario_year_data_2["node"].isin(node_list)]
-
-        node_data_2["datetime"] = pd.to_datetime(node_data_2["datetime"])
-
-        node_data_2_filtered = node_data_2[
-            (node_data_2["datetime"].dt.month >= 5)
-            & (node_data_2["datetime"].dt.month <= 11)
-        ]
-
-        node_data_2_filtered["month_name"] = node_data_2_filtered[
-            "datetime"
-        ].dt.month.map(month_names)
-
         if not node_data_2_filtered.empty:
             fig2 = px.box(
                 node_data_2_filtered,
@@ -499,22 +514,26 @@ if submit_button:
                 ),
                 yaxis_title="Flow (CFS)",
                 xaxis_title="Month",
+                yaxis=dict(range=y_range),
             )
+
+            fig2_2 = px.violin(
+                node_data_2_filtered,
+                x="month_name",
+                y="value",
+                color="node",
+                box=True,  # Show box plot inside violin
+                category_orders={"month_name": list(month_names.values())},
+                title="Flow Distribution (Violin Plot)",
+            )
+            fig2_2.update_layout(yaxis=dict(range=y_range))
 
             st.plotly_chart(fig2, use_container_width=True)
             st.plotly_chart(
-                px.violin(
-                    node_data_2_filtered,
-                    x="month_name",
-                    y="value",
-                    color="node",
-                    box=True,  # Show box plot inside violin
-                    category_orders={"month_name": list(month_names.values())},
-                    title="Flow Distribution (Violin Plot)",
-                ),
+                fig2_2,
                 use_container_width=True,
             )
-        
+
         else:
             st.warning("No data available for May-November period in Scenario 2")
         glc_vel_gate_data = generate_vel_gate_data(
