@@ -51,24 +51,6 @@ def get_scenario_and_year_selection(
 def generate_vel_gate_data(
     scenario_data, selected_model, selected_year, gate_name, stream_gate
 ):
-    """
-    Processes gate operations, velocity, and water level data for a given gate.
-
-    Args:
-        scenario_data (dict): Dictionary containing scenario data with keys 'gate_operations', 'vel', and 'water_levels'.
-        selected_model (str): The model selected for processing.
-        selected_year (int): The year to filter the data.
-        gate_name (str, optional): The name of the gate to process. Defaults to "glc".
-
-    Returns:
-        dict: A dictionary containing processed DataFrames:
-            - full_merged_df: Merged DataFrame with gate operations and velocity data.
-            - hydro_df: Processed hydro data DataFrame.
-            - avg_daily_velocity: DataFrame with average daily velocity.
-            - avg_daily_gate: DataFrame with average daily gate operations.
-            - total_daily_velocity: DataFrame with consecutive velocity data.
-            - total_daily_gate: DataFrame with consecutive gate operation data.
-    """
     # Filter gate operations and velocity data based on node/location filters
     gate_data = scenario_data["gate_operations"]
     gate_data = gate_data[
