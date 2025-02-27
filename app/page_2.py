@@ -12,6 +12,7 @@ from db import (
     generate_scenario_year_data,
     get_filter_nodes_for_gate,
     get_available_years,
+    get_all_gate_settings,
 )
 
 
