@@ -477,8 +477,8 @@ if submit_button:
             )
             left_violin.update_layout(yaxis=dict(range=violin_ranges))
 
-            st.plotly_chart(left_boxplot, use_container_width=True)
-            st.plotly_chart(left_violin, use_container_width=True)
+            st.plotly_chart(left_boxplot, use_container_width=True, key="left_boxplot")
+            st.plotly_chart(left_violin, use_container_width=True, key="left_boxplot")
         else:
             st.warning("No data available for May-November period in Scenario 1")
 
