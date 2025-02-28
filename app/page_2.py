@@ -48,9 +48,7 @@ def get_scenario_and_year_selection(
     return selected_model, selected_year
 
 
-def generate_vel_gate_data(
-    scenario_data, selected_model, selected_year, gate_name, stream_gate
-):
+def generate_vel_gate_data(scenario_data):
     gate_data = scenario_data["gate_operations"].sort_values(by="datetime")
     gate_data_in_op_season = gate_data[gate_data["datetime"].dt.month.between(5, 11)]
     gate_data_in_op_season["gate_status"] = gate_data_in_op_season["value"] >= 10
@@ -100,7 +98,7 @@ def generate_vel_gate_data(
         )
     )
 
-    velocity_data = scenario_data["vel"]
+    velocity_data = scenario_data["vel"].sort_values(by="datetime")
     velocity_data["year"] = velocity_data["datetime"].dt.year
     velocity_data["is_over_8fs"] = velocity_data["vel"] >= 8
     velocity_data["consecutive_groups"] = velocity_data.groupby("location")[
@@ -154,7 +152,7 @@ def generate_vel_gate_data(
         right_on=["datetime", "node"],
     )
 
-    hydro_data = scenario_data["water_levels"]
+    hydro_data = scenario_data["water_levels"].sort_values(by="datetime")
     hydro_data = hydro_data[hydro_data["datetime"].dt.month.between(5, 11)]
     hydro_data["time_unit"] = 0.25
     hydro_data = hydro_data.rename(columns={"value": "water_level"})
@@ -226,10 +224,10 @@ with col2:
 submit_button = st.button("Submit")
 
 if submit_button:
-    scenario_year_data_1, scenario_data_1 = load_scenario_data(
+    scenario_year_data_left, scenario_data_left = load_scenario_data(
         selected_model_1, selected_year_1
     )
-    scenario_year_data_2, scenario_data_2 = load_scenario_data(
+    scenario_year_data_right, scenario_data_right = load_scenario_data(
         selected_model_2, selected_year_2
     )
 
@@ -248,16 +246,10 @@ if submit_button:
     violin_ranges = None
     boxplot_ranges = None
 
-    right_glc_vel_gate_data = generate_vel_gate_data(
-        scenario_data_1, selected_model_1, selected_year_1, "glc", "dgl"
-    )
-    right_old_vel_gate_data = generate_vel_gate_data(
-        scenario_data_1, selected_model_1, selected_year_1, "old", "old"
-    )
-    right_mid_vel_gate_data = generate_vel_gate_data(
-        scenario_data_1, selected_model_1, selected_year_1, "mid", "mho"
-    )
-    right_glc_min_date = min(right_glc_vel_gate_data["full_merged_df"]["date"])
+    left_data = generate_vel_gate_data(scenario_data_left)
+    right_data = generate_vel_gate_data(scenario_data_right)
+
+    right_glc_min_date = min(right["full_merged_df"]["date"])
     right_glc_max_date = max(right_glc_vel_gate_data["full_merged_df"]["date"])
 
     left_glc_vel_gate_data = generate_vel_gate_data(
