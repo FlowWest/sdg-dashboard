@@ -51,37 +51,124 @@ def get_scenario_and_year_selection(
 def generate_vel_gate_data(
     scenario_data, selected_model, selected_year, gate_name, stream_gate
 ):
-    # Filter gate operations and velocity data based on node/location filters
     gate_data = scenario_data["gate_operations"]
-    gate_data = gate_data[
-        gate_data["node"] == get_filter_nodes_for_gate(gate_name, "gate_operations")
-    ]
+    gate_data_in_op_season = gate_data[gate_data["datetime"].dt.month.between(5, 11)]
+    gate_data_in_op_season["gate_status"] = gate_data_in_op_season["value"] >= 10
+    gate_data_in_op_season["consecutive_groups"] = gate_data_in_op_season.groupby(
+        "node"
+    )["value"].transform(lambda x: (x != x.shift()).cumsum())
 
-    vel_data = scenario_data["vel"]
-    vel_data = vel_data[
-        vel_data["location"] == get_filter_nodes_for_gate(gate_name, "velocity")
-    ]
+    gate_data_in_op_season["group_min_datetime"] = gate_data_in_op_season.groupby(
+        ["node", "consecutive_groups"]
+    )["datetime"].transform(min)
 
-    # Merge and process full data
-    full_merged_df = post_process_full_data(
-        gate_data, vel_data, selected_model, gate_name, year=selected_year
+    gate_data_in_op_season["group_max_datetime"] = gate_data_in_op_season.groupby(
+        ["node", "consecutive_groups"]
+    )["datetime"].transform(max)
+
+    consecutive_streaks = (
+        gate_data_in_op_season.groupby(
+            [
+                "node",
+                "consecutive_groups",
+                "value",
+                "group_min_datetime",
+                "group_max_datetime",
+            ]
+        )
+        .size()
+        .reset_index(name="count")
     )
-    full_merged_df = full_merged_df.rename(columns={"vel": "velocity"})
 
-    # Process hydro data
-    hydro_df = post_process_hydro_data(
-        scenario_data["water_levels"], selected_model, stream_gate, selected_year
+    consecutive_streaks["duration"] = consecutive_streaks["count"] * 15 / 60
+    consecutive_streaks = consecutive_streaks.drop(
+        ["value", "consecutive_groups", "group_max_datetime"], axis=1
     )
+
+    gate_data_final = (
+        pd.merge(
+            gate_data_in_op_season,
+            consecutive_streaks,
+            left_on="group_min_datetime",
+            right_on="group_min_datetime",
+        )
+        .drop(["consecutive_groups", "value"], axis=1)
+        .rename(
+            columns={
+                "group_min_datetime": "gate_min_datetime",
+                "group_max_datetime": "gate_max_datetime",
+                "count": "gate_count",
+                "duration": "gate_streak_duration",
+            }
+        )
+    )
+
+    velocity_data = scenario_data["vel"]
+    velocity_data["year"] = velocity_data["datetime"].dt.year
+    velocity_data["is_over_8fs"] = velocity_data["vel"] >= 8
+    velocity_data["consecutive_groups"] = velocity_data.groupby("location")[
+        "is_over_8fs"
+    ].transform(lambda x: (x != x.shift()).cumsum())
+
+    velocity_data["group_min_date"] = velocity_data.groupby(
+        ["location", "consecutive_groups"]
+    )["datetme"].transform(min)
+
+    velocity_data["group_max_date"] = velocity_data.groupby(
+        ["location", "consecutive_groups"]
+    )["datetme"].transform(max)
+
+    velocity_data["date"] = velocity_data["datetime"].dt.date.astype(str)
+
+    velocity_consecutive_streaks = (
+        velocity_data.groupby(
+            [
+                "location",
+                "consecutive_groups",
+                "is_over_8fs",
+                "group_min_datetime",
+                "group_max_datetime",
+            ]
+        )
+        .size()
+        .reset_index(name="count")
+    )
+    velocity_consecutive_streaks["duration"] = (
+        velocity_consecutive_streaks["count"] * 15 / 60
+    )
+
+    velocity_consecutive_streaks = velocity_consecutive_streaks.drop(
+        ["consecutive_groups", "is_over_8fs", "group_max_datetime"]
+    )
+
+    velocity_data_final = pd.merge(
+        velocity_data,
+        velocity_consecutive_streaks,
+        left_on="group_min_datetime",
+        right_on="group_max_datetime",
+    ).rename(columns={"vel": "velocity"})
+
+    # TODO: wny are these merged?
+    # merge gate and velocity datasets
+    ops_data = pd.merge(
+        gate_data_final, velocity_data_final, left_on="datetime", right_on="datetime"
+    )
+
+    hydro_data = scenario_data["water_levels"]
+    hydro_data = hydro_data[hydro_data["datetime"].dt.month.between(5, 11)]
+    hydro_data["time_unit"] = 0.25
+    hydro_data = hydro_data.rename(columns={"value": "water_level"})
+    hydro_data["week"] = hydro_data["datetine"].dt.isocalendar().week
 
     # Calculate daily averages and consecutive lengths
-    avg_daily_velocity = calc_avg_daily_vel(full_merged_df)
-    avg_daily_gate = calc_avg_daily_gate(full_merged_df)
-    total_daily_velocity = calc_avg_len_consec_vel(full_merged_df)
-    total_daily_gate = calc_avg_len_consec_gate(full_merged_df)
+    avg_daily_velocity = calc_avg_daily_vel(ops_data)
+    avg_daily_gate = calc_avg_daily_gate(ops_data)
+    total_daily_velocity = calc_avg_len_consec_vel(ops_data)
+    total_daily_gate = calc_avg_len_consec_gate(ops_data)
 
     return {
-        "full_merged_df": full_merged_df,
-        "hydro_df": hydro_df,
+        "ops_data": ops_data,
+        "hydro_data": hydro_data,
         "avg_daily_velocity": avg_daily_velocity,
         "avg_daily_gate": avg_daily_gate,
         "total_daily_velocity": total_daily_velocity,
