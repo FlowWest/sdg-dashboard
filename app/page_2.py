@@ -271,7 +271,7 @@ scenario_list = scenarios["Scenario"].tolist()
 col1, col2 = st.columns(2)
 
 with col1:
-    selected_model_1, selected_year_1 = get_scenario_and_year_selection(
+    selected_model_left, selected_year_left = get_scenario_and_year_selection(
         column="1",
         scenario_key="scenario_select_1",
         year_key="year_select_1",
@@ -281,7 +281,7 @@ with col1:
     )
 
 with col2:
-    selected_model_2, selected_year_2 = get_scenario_and_year_selection(
+    selected_model_right, selected_year_right = get_scenario_and_year_selection(
         column="2",
         scenario_key="scenario_select_2",
         year_key="year_select_2",
@@ -294,10 +294,10 @@ submit_button = st.button("Submit")
 
 if submit_button:
     scenario_year_data_left, scenario_data_left = load_scenario_data(
-        selected_model_1, selected_year_1
+        selected_model_left, selected_year_left
     )
     scenario_year_data_right, scenario_data_right = load_scenario_data(
-        selected_model_2, selected_year_2
+        selected_model_right, selected_year_right
     )
 
     node_list = ["glc_flow_fish", "old_flow_fish", "mid_flow_fish"]
@@ -315,48 +315,19 @@ if submit_button:
     violin_ranges = None
     boxplot_ranges = None
 
-    left_data = generate_vel_gate_data(scenario_data_left)
-    right_data = generate_vel_gate_data(scenario_data_right)
+    left_data = generate_vel_gate_data(scenario_data_left, selected_model_left)
+    right_data = generate_vel_gate_data(scenario_data_right, selected_model_right)
 
-    righ_glc_data = right_data["ops_data"]
+    left_ops_data = left_data["ops_data"].sort_values(by=["gate", "datetime"])
+    left_min_dates = left_ops_data.groupby("gate")["datetime"].min().reset_index()
+    left_max_dates = left_ops_data.groupby("gate")["datetime"].max().reset_index()
 
-    right_glc_min_date = min(right["full_merged_df"]["date"])
-    right_glc_max_date = max(right_glc_vel_gate_data["full_merged_df"]["date"])
+    right_ops_data = right_data["ops_data"]
+    right_min_dates = right_ops_data.groupby("gate")["datetime"].min().reset_index()
+    right_max_dates = right_ops_data.groupby("gate")["datetime"].max().reset_index()
 
-    left_glc_vel_gate_data = generate_vel_gate_data(
-        scenario_data_1, selected_model_1, selected_year_1, "glc", "dgl"
-    )
-    left_old_vel_gate_data = generate_vel_gate_data(
-        scenario_data_1, selected_model_1, selected_year_1, "old", "old"
-    )
-    left_mid_vel_gate_data = generate_vel_gate_data(
-        scenario_data_1, selected_model_1, selected_year_1, "mid", "mho"
-    )
-    left_glc_min_date = min(left_glc_vel_gate_data["full_merged_df"]["date"])
-    left_glc_max_date = max(left_glc_vel_gate_data["full_merged_df"]["date"])
-
-    right_scenario_velocity = pd.concat(
-        [
-            right_glc_vel_gate_data["full_merged_df"],
-            right_old_vel_gate_data["full_merged_df"],
-            right_mid_vel_gate_data["full_merged_df"],
-        ]
-    )
-
-    right_scenario_velocity["month_name"] = right_scenario_velocity[
-        "datetime"
-    ].dt.month.map(month_names)
-
-    left_scenario_velocity = pd.concat(
-        [
-            left_glc_vel_gate_data["full_merged_df"],
-            left_old_vel_gate_data["full_merged_df"],
-            left_mid_vel_gate_data["full_merged_df"],
-        ]
-    )
-    left_scenario_velocity["month_name"] = left_scenario_velocity[
-        "datetime"
-    ].dt.month.map(month_names)
+    right_ops_data["month_name"] = right_ops_data["datetime"].dt.month.map(month_names)
+    left_ops_data["month_name"] = left_ops_data["datetime"].dt.month.map(month_names)
 
     violin_ranges = [
         min(
