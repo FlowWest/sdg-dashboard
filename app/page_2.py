@@ -331,33 +331,48 @@ if submit_button:
 
     violin_ranges = [
         min(
-            left_scenario_velocity[["velocity"]].min().iloc[0] - 2,
-            right_scenario_velocity[["velocity"]].min().iloc[0] - 2,
+            left_ops_data[["velocity"]].min().iloc[0] - 2,
+            right_ops_data[["velocity"]].min().iloc[0] - 2,
         ),
         max(
-            left_scenario_velocity[["velocity"]].max().iloc[0] + 2,
-            right_scenario_velocity[["velocity"]].max().iloc[0] + 2,
+            left_ops_data[["velocity"]].max().iloc[0] + 2,
+            right_ops_data[["velocity"]].max().iloc[0] + 2,
         ),
     ]
 
     boxplot_ranges = [
         min(
-            left_scenario_velocity[["velocity"]].min().iloc[0] - 2,
-            right_scenario_velocity[["velocity"]].min().iloc[0] - 2,
+            left_ops_data[["velocity"]].min().iloc[0] - 2,
+            right_ops_data[["velocity"]].min().iloc[0] - 2,
         ),
         max(
-            left_scenario_velocity[["velocity"]].max().iloc[0] + 2,
-            right_scenario_velocity[["velocity"]].max().iloc[0] + 2,
+            left_ops_data[["velocity"]].max().iloc[0] + 2,
+            right_ops_data[["velocity"]].max().iloc[0] + 2,
         ),
     ]
 
     with col1:
-        st.success(f"Scenario 1 Loaded: {selected_model_1} ({selected_year_1})")
-        st.write(scenario_data_1["flow"], use_container_width=True)
+        left_scenario_date_range = left_ops_data["date"].agg(["min", "max"]).tolist()
+        st.success(f"Scenario 1 Loaded: {selected_model_left} ({selected_year_left})")
 
-        velocity_summary_stats_title = f"Summary stats of fish passage from {left_glc_min_date} to {left_glc_max_date}."
-        gate_summary_stats_title = f"Summary stats of upstream of gate from {left_glc_min_date} to {left_glc_max_date}."
-        min_max_summary_title = f"Min max stats of fish passage from {left_glc_min_date} to {left_glc_max_date}."
+        # TODO: finish formatting this table so that its the best it can possibly be
+        st.dataframe(
+            left_ops_data,
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "id": None,
+                "scenario_id": None,
+                "node": None,
+                "gate_min_datetime": None,
+                "gate_max_datetime": None,
+                "year_x": st.column_config.NumberColumn(format="%d"),
+            },
+        )
+
+        velocity_summary_stats_title = f"Summary stats of fish passage from {left_scenario_date_range[0]} to {left_scenario_date_range[1]}."
+        gate_summary_stats_title = f"Summary stats of upstream of gate from {left_scenario_date_range[0]} to {left_scenario_date_range[1]}."
+        min_max_summary_title = f"Min max stats of fish passage from {left_scenario_date_range[0]} to {left_scenario_date_range[1]}."
 
         velocity_summary_data = {
             "Location": [
