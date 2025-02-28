@@ -51,17 +51,15 @@ def get_scenario_and_year_selection(
 def generate_vel_gate_data(
     scenario_data, selected_model, selected_year, gate_name, stream_gate
 ):
-    gate_data = scenario_data["gate_operations"]
+    gate_data = scenario_data["gate_operations"].sort_values(by="datetime")
     gate_data_in_op_season = gate_data[gate_data["datetime"].dt.month.between(5, 11)]
     gate_data_in_op_season["gate_status"] = gate_data_in_op_season["value"] >= 10
     gate_data_in_op_season["consecutive_groups"] = gate_data_in_op_season.groupby(
         "node"
     )["value"].transform(lambda x: (x != x.shift()).cumsum())
-
     gate_data_in_op_season["group_min_datetime"] = gate_data_in_op_season.groupby(
         ["node", "consecutive_groups"]
     )["datetime"].transform(min)
-
     gate_data_in_op_season["group_max_datetime"] = gate_data_in_op_season.groupby(
         ["node", "consecutive_groups"]
     )["datetime"].transform(max)
@@ -82,15 +80,14 @@ def generate_vel_gate_data(
 
     consecutive_streaks["duration"] = consecutive_streaks["count"] * 15 / 60
     consecutive_streaks = consecutive_streaks.drop(
-        ["value", "consecutive_groups", "group_max_datetime"], axis=1
+        ["value", "consecutive_groups"], axis=1
     )
-
     gate_data_final = (
         pd.merge(
             gate_data_in_op_season,
             consecutive_streaks,
-            left_on="group_min_datetime",
-            right_on="group_min_datetime",
+            left_on=["group_min_datetime", "group_max_datetime", "node"],
+            right_on=["group_min_datetime", "group_max_datetime", "node"],
         )
         .drop(["consecutive_groups", "value"], axis=1)
         .rename(
@@ -151,7 +148,10 @@ def generate_vel_gate_data(
     # TODO: wny are these merged?
     # merge gate and velocity datasets
     ops_data = pd.merge(
-        gate_data_final, velocity_data_final, left_on="datetime", right_on="datetime"
+        gate_data_final,
+        velocity_data_final,
+        left_on=["datetime", "node"],
+        right_on=["datetime", "node"],
     )
 
     hydro_data = scenario_data["water_levels"]
