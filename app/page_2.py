@@ -1,3 +1,4 @@
+from pandas.plotting import boxplot
 import streamlit as st
 import pandas as pd
 import altair as alt
@@ -46,6 +47,229 @@ def get_scenario_and_year_selection(
         selected_year = None
 
     return selected_model, selected_year
+
+
+def render_scenario(
+    data,
+    selected_model,
+    selected_year,
+    month_names,
+    boxplot_config,
+    violin_config,
+):
+    boxplot_ranges = boxplot_config.get("range")
+    boxplot_key = boxplot_config.get("key")
+    violin_ranges = violin_config.get("range")
+    violin_key = violin_config.get("key")
+
+    ops_data = data["ops_data"].sort_values(by="datetime")
+    ops_data["month_name"] = ops_data["datetime"].dt.month.map(month_names)
+
+    st.success(f"Scenario Loaded: {selected_model} ({selected_year})")
+
+    st.dataframe(
+        ops_data,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "id": None,
+            "scenario_id": None,
+            "node": None,
+            "gate_min_datetime": None,
+            "gate_max_datetime": None,
+            "year_x": st.column_config.NumberColumn(format="%d"),
+        },
+    )
+
+    avg_daily_velocity_display = data["avg_daily_velocity"].copy()
+    avg_daily_velocity_display["is_over_8fs"] = avg_daily_velocity_display[
+        "is_over_8fs"
+    ].map(
+        {
+            False: "Average Daily (hours) Under 8 ft/s",
+            True: "Average Daily (hours) Over 8 ft/s",
+        }
+    )
+    avg_daily_velocity_display = avg_daily_velocity_display.pivot_table(
+        index="gate", columns="is_over_8fs", values="time_unit"
+    ).reset_index()
+    streak_duration_display = data["total_daily_velocity"].copy()
+    streak_duration_display["is_over_8fs"] = streak_duration_display["is_over_8fs"].map(
+        {
+            False: "Average Streak (Hours) Under 8 ft/s",
+            True: "Average Streak (Hours) Over 8 ft/s",
+        }
+    )
+    streak_duration_display = streak_duration_display.pivot_table(
+        index="gate",
+        columns="is_over_8fs",
+        values="daily_average_time_per_consecutive_group",
+    ).reset_index()
+
+    velocity_summary_data = pd.merge(
+        avg_daily_velocity_display, streak_duration_display, on="gate"
+    )
+
+    st.dataframe(
+        velocity_summary_data.style.highlight_max(
+            axis=0,
+            subset=[col for col in velocity_summary_data.columns if col != "gate"],
+            props="background-color: #a2cf9d; color: black; font-weight: bold; border: 2px solid green;",
+        ),
+        hide_index=True,
+        column_config={
+            "gate": "Gate",
+            "Average Daily (hours) Under 8 ft/s": st.column_config.NumberColumn(
+                format="%.2f"
+            ),
+            "Average Daily (hours) Over 8 ft/s": st.column_config.NumberColumn(
+                format="%.2f"
+            ),
+            "Average Streak (Hours) Under 8 ft/s": st.column_config.NumberColumn(
+                format="%.2f"
+            ),
+            "Average Streak (Hours) Over 8 ft/s": st.column_config.NumberColumn(
+                format="%.2f"
+            ),
+        },
+    )
+
+    avg_daily_gate_display = data["avg_daily_gate"].copy()
+    avg_daily_gate_display["gate_status"] = avg_daily_gate_display["gate_status"].map(
+        {
+            "Closed": "Average Daily Closed (Hours)",
+            "Open": "Average Daily Open (Hours)",
+        }
+    )
+    avg_daily_gate_display = avg_daily_gate_display.pivot_table(
+        index="gate", columns="gate_status", values="time_unit"
+    ).reset_index()
+    total_daily_gate_display = data["total_daily_gate"].copy()
+    total_daily_gate_display["gate_status"] = total_daily_gate_display[
+        "gate_status"
+    ].map(
+        {
+            "Closed": "Average Closed Duration per Streak",
+            "Open": "Average Open Duration per Streak",
+        }
+    )
+    total_daily_gate_display = total_daily_gate_display.pivot_table(
+        index="gate",
+        columns="gate_status",
+        values="daily_average_time_per_consecutive_gate",
+    ).reset_index()
+
+    gate_summary_data = pd.merge(
+        avg_daily_gate_display, total_daily_gate_display, on="gate"
+    )
+
+    st.dataframe(
+        gate_summary_data.style.highlight_max(
+            axis=0,
+            subset=[col for col in gate_summary_data.columns if col != "gate"],
+            props="background-color: #a2cf9d; color: black; font-weight: bold; border: 2px solid green;",
+        ),
+        column_config={
+            "gate": "Gate",
+            "Average Daily Closed (Hours)": st.column_config.NumberColumn(
+                format="%.2f"
+            ),
+            "Average Daily Open (Hours)": st.column_config.NumberColumn(format="%.2f"),
+            "Average Closed Duration per Streak": st.column_config.NumberColumn(
+                format="%.2f"
+            ),
+            "Average Open Duration per Streak": st.column_config.NumberColumn(
+                format="%.2f"
+            ),
+        },
+        hide_index=True,
+    )
+
+    min_max_summary_display = data["ops_data"].copy()
+    min_max_summary_display = (
+        min_max_summary_display.groupby("gate")["velocity"]
+        .agg(["min", "max"])
+        .reset_index()
+    )
+    min_max_summary_display = min_max_summary_display.rename(
+        columns={
+            "min": "Minimum Velocity Through Gate (ft/s)",
+            "max": "Maximum Velocity Through Gate (ft/s)",
+        }
+    )
+
+    st.dataframe(
+        min_max_summary_display,
+        hide_index=True,
+        column_config={
+            "gate": "Gate",
+            "Minimum Velocity Through Gate (ft/s)": st.column_config.NumberColumn(
+                format="%.2f"
+            ),
+            "Maximum Velocity Through Gate (ft/s)": st.column_config.NumberColumn(
+                format="%.2f"
+            ),
+        },
+    )
+
+    if not ops_data.empty:
+        boxplot = px.box(
+            ops_data,
+            x="month_name",
+            y="velocity",
+            color="gate",
+            category_orders={"month_name": list(month_names.values())},
+            title=f"Velocity by Month (May-Nov) - {selected_model} ({selected_year})",
+            labels={
+                "month_name": "Month",
+                "value": "velocity",
+                "node": "Location",
+            },
+            height=500,
+            points="outliers",
+        )
+
+        boxplot.update_traces(
+            hovertemplate="<b>%{x}</b><br>Location: %{customdata}<br>velocity: %{y:.3f} CFS<extra></extra>",
+            customdata=[[node] for node in ops_data["gate"]],
+        )
+
+        boxplot.update_layout(
+            boxmode="group",
+            legend=dict(
+                orientation="h",
+                y=1.1,
+                x=0.5,
+                xanchor="center",
+            ),
+            yaxis_title="velocity (CFS)",
+            xaxis_title="Month",
+            yaxis=dict(range=boxplot_ranges),
+        )
+
+        violin_plot = px.violin(
+            ops_data,
+            x="month_name",
+            y="velocity",
+            color="gate",
+            box=True,
+            category_orders={"month_name": list(month_names.values())},
+            title="Velocity Distribution (Violin Plot)",
+        )
+        violin_plot.update_layout(
+            yaxis=dict(range=violin_ranges),
+            legend=dict(
+                orientation="h",
+                y=1.1,
+                x=0.5,
+                xanchor="center",
+            ),
+        )
+
+        st.plotly_chart(boxplot, use_container_width=True, key=boxplot_key)
+        st.plotly_chart(violin_plot, use_container_width=True, key=violin_key)
+    else:
+        st.warning(f"No data available for May-November period in this scenario")
 
 
 def generate_vel_gate_data(scenario_data, scenario):
@@ -290,9 +514,11 @@ with col2:
         previous_year_key="previous_year_2",
     )
 
+
 submit_button = st.button("Submit")
 
 if submit_button:
+    st.checkbox("Show as difference from baseline", value=False)
     scenario_year_data_left, scenario_data_left = load_scenario_data(
         selected_model_left, selected_year_left
     )
@@ -311,9 +537,6 @@ if submit_button:
         10: "Oct",
         11: "Nov",
     }
-
-    violin_ranges = None
-    boxplot_ranges = None
 
     left_data = generate_vel_gate_data(scenario_data_left, selected_model_left)
     right_data = generate_vel_gate_data(scenario_data_right, selected_model_right)
@@ -352,492 +575,23 @@ if submit_button:
     ]
 
     with col1:
-        left_scenario_date_range = left_ops_data["date"].agg(["min", "max"]).tolist()
-        st.success(f"Scenario 1 Loaded: {selected_model_left} ({selected_year_left})")
-
-        # TODO: finish formatting this table so that its the best it can possibly be
-        st.dataframe(
-            left_ops_data,
-            use_container_width=True,
-            hide_index=True,
-            column_config={
-                "id": None,
-                "scenario_id": None,
-                "node": None,
-                "gate_min_datetime": None,
-                "gate_max_datetime": None,
-                "year_x": st.column_config.NumberColumn(format="%d"),
-            },
+        render_scenario(
+            left_data,
+            selected_model_left,
+            selected_year_left,
+            month_names=month_names,
+            boxplot_config={"range": boxplot_ranges, "key": "left_boxplot"},
+            violin_config={"range": violin_ranges, "key": "left_violin"},
         )
-
-        velocity_summary_stats_title = f"Summary stats of fish passage from {left_scenario_date_range[0]} to {left_scenario_date_range[1]}."
-        gate_summary_stats_title = f"Summary stats of upstream of gate from {left_scenario_date_range[0]} to {left_scenario_date_range[1]}."
-        min_max_summary_title = f"Min max stats of fish passage from {left_scenario_date_range[0]} to {left_scenario_date_range[1]}."
-
-        velocity_summary_data = {
-            "Location": [
-                location_gate[left_glc_vel_gate_data["full_merged_df"]["gate"][0]],
-                location_gate[left_mid_vel_gate_data["full_merged_df"]["gate"][0]],
-                location_gate[left_old_vel_gate_data["full_merged_df"]["gate"][0]],
-            ],
-            f"Average Daily Time (Hours) {left_glc_vel_gate_data["avg_daily_velocity"]['Velocity_Category'][0]}": [
-                round(left_glc_vel_gate_data["avg_daily_velocity"]["time_unit"][0], 2),
-                round(left_mid_vel_gate_data["avg_daily_velocity"]["time_unit"][0], 2),
-                round(left_old_vel_gate_data["avg_daily_velocity"]["time_unit"][0], 2),
-            ],
-            f"Average Streak Duration (Hours) {left_glc_vel_gate_data["total_daily_velocity"]['Velocity_Category'][0]}": [
-                round(
-                    left_glc_vel_gate_data["total_daily_velocity"][
-                        "daily_average_time_per_consecutive_group"
-                    ][0],
-                    2,
-                ),
-                round(
-                    left_mid_vel_gate_data["total_daily_velocity"][
-                        "daily_average_time_per_consecutive_group"
-                    ][0],
-                    2,
-                ),
-                round(
-                    left_old_vel_gate_data["total_daily_velocity"][
-                        "daily_average_time_per_consecutive_group"
-                    ][0],
-                    2,
-                ),
-            ],
-        }
-        if len(left_glc_vel_gate_data["avg_daily_velocity"]["Velocity_Category"]) > 1:
-            velocity_summary_data[
-                f"Average Daily Time (Hours) {left_glc_vel_gate_data["avg_daily_velocity"]['Velocity_Category'][1]}"
-            ] = [
-                round(left_glc_vel_gate_data["avg_daily_velocity"]["time_unit"][1], 2)
-                if len(left_glc_vel_gate_data["avg_daily_velocity"]["time_unit"]) > 1
-                else 0,
-                round(left_mid_vel_gate_data["avg_daily_velocity"]["time_unit"][1], 2)
-                if len(left_mid_vel_gate_data["avg_daily_velocity"]["time_unit"]) > 1
-                else 0,
-                round(left_old_vel_gate_data["avg_daily_velocity"]["time_unit"][1], 2)
-                if len(left_old_vel_gate_data["avg_daily_velocity"]["time_unit"]) > 1
-                else 0,
-            ]
-        if len(left_glc_vel_gate_data["total_daily_velocity"]["Velocity_Category"]) > 1:
-            velocity_summary_data[
-                f"Average Streak Duration (Hours) {left_glc_vel_gate_data["total_daily_velocity"]['Velocity_Category'][1]}"
-            ] = [
-                round(
-                    left_glc_vel_gate_data["total_daily_velocity"][
-                        "daily_average_time_per_consecutive_group"
-                    ][1],
-                    2,
-                ),
-                round(
-                    left_mid_vel_gate_data["total_daily_velocity"][
-                        "daily_average_time_per_consecutive_group"
-                    ][1],
-                    2,
-                ),
-                round(
-                    left_old_vel_gate_data["total_daily_velocity"][
-                        "daily_average_time_per_consecutive_group"
-                    ][1],
-                    2,
-                ),
-            ]
-
-        gate_summary_data = {
-            "Location": [
-                location_gate[left_glc_vel_gate_data["full_merged_df"]["gate"][0]],
-                location_gate[left_mid_vel_gate_data["full_merged_df"]["gate"][0]],
-                location_gate[left_old_vel_gate_data["full_merged_df"]["gate"][0]],
-            ],
-            f"Average Daily {left_glc_vel_gate_data["avg_daily_gate"]['gate_status'][0]} Time (Hours) for gate": [
-                round(left_glc_vel_gate_data["avg_daily_gate"]["time_unit"][0], 2),
-                round(left_mid_vel_gate_data["avg_daily_gate"]["time_unit"][0], 2),
-                round(left_old_vel_gate_data["avg_daily_gate"]["time_unit"][0], 2),
-            ],
-            f"Average {left_glc_vel_gate_data["total_daily_gate"]['gate_status'][0]} Duration (Hours) Per Streak": [
-                round(
-                    left_glc_vel_gate_data["total_daily_gate"][
-                        "daily_average_time_per_consecutive_gate"
-                    ][0],
-                    2,
-                ),
-                round(
-                    left_mid_vel_gate_data["total_daily_gate"][
-                        "daily_average_time_per_consecutive_gate"
-                    ][0],
-                    2,
-                ),
-                round(
-                    left_old_vel_gate_data["total_daily_gate"][
-                        "daily_average_time_per_consecutive_gate"
-                    ][0],
-                    2,
-                ),
-            ],
-        }
-        if len(left_glc_vel_gate_data["avg_daily_gate"]["gate_status"]) > 1:
-            gate_summary_data[
-                f"Average Daily {left_glc_vel_gate_data["avg_daily_gate"]['gate_status'][1]} Time (Hours) for gate"
-            ] = [
-                round(left_glc_vel_gate_data["avg_daily_gate"]["time_unit"][1], 2)
-                if len(left_glc_vel_gate_data["avg_daily_gate"]["time_unit"]) > 1
-                else 0,
-                round(left_mid_vel_gate_data["avg_daily_gate"]["time_unit"][1], 2)
-                if len(left_mid_vel_gate_data["avg_daily_gate"]["time_unit"]) > 1
-                else 0,
-                round(left_old_vel_gate_data["avg_daily_gate"]["time_unit"][1], 2)
-                if len(left_old_vel_gate_data["avg_daily_gate"]["time_unit"]) > 1
-                else 0,
-            ]
-
-        if len(left_glc_vel_gate_data["total_daily_gate"]["gate_status"]) > 1:
-            gate_summary_data[
-                f"Average {left_glc_vel_gate_data["total_daily_gate"]['gate_status'][1]} Duration (Hours) Per Streak"
-            ] = [
-                round(
-                    left_glc_vel_gate_data["total_daily_gate"][
-                        "daily_average_time_per_consecutive_gate"
-                    ][1],
-                    2,
-                ),
-                round(
-                    left_mid_vel_gate_data["total_daily_gate"][
-                        "daily_average_time_per_consecutive_gate"
-                    ][1],
-                    2,
-                ),
-                round(
-                    left_old_vel_gate_data["total_daily_gate"][
-                        "daily_average_time_per_consecutive_gate"
-                    ][1],
-                    2,
-                ),
-            ]
-
-        min_max_summary = {
-            "Location": [
-                location_gate[left_glc_vel_gate_data["full_merged_df"]["gate"][0]],
-                location_gate[left_mid_vel_gate_data["full_merged_df"]["gate"][0]],
-                location_gate[left_old_vel_gate_data["full_merged_df"]["gate"][0]],
-            ],
-            "Minimum velocity through fish passage (ft/s)": [
-                round(min(left_glc_vel_gate_data["full_merged_df"]["velocity"]), 2),
-                round(min(left_mid_vel_gate_data["full_merged_df"]["velocity"]), 2),
-                round(min(left_old_vel_gate_data["full_merged_df"]["velocity"]), 2),
-            ],
-            "Maximum velocity through fish passage (ft/s)": [
-                round(max(left_glc_vel_gate_data["full_merged_df"]["velocity"]), 2),
-                round(max(left_mid_vel_gate_data["full_merged_df"]["velocity"]), 2),
-                round(max(left_old_vel_gate_data["full_merged_df"]["velocity"]), 2),
-            ],
-        }
-
-        velocity_summary_df = pd.DataFrame(velocity_summary_data)
-        gate_summary_df = pd.DataFrame(gate_summary_data)
-        min_max_vel_summary_df = pd.DataFrame(min_max_summary)
-
-        st.dataframe(
-            velocity_summary_df.style.highlight_max(
-                subset=velocity_summary_df.columns[1:], color="#ffffc5"
-            ).format(precision=2)
-        )
-        st.dataframe(
-            min_max_vel_summary_df.style.highlight_max(
-                subset=min_max_vel_summary_df.columns[1:], color="#ffffc5"
-            ).format(precision=2)
-        )
-        st.dataframe(
-            gate_summary_df.style.highlight_max(
-                subset=gate_summary_df.columns[1:], color="#ffffc5"
-            ).format(precision=2)
-        )
-
-        if not left_scenario_velocity.empty:
-            left_boxplot = px.box(
-                left_scenario_velocity,
-                x="month_name",
-                y="velocity",
-                color="location",
-                category_orders={"month_name": list(month_names.values())},
-                title=f"Velocity by Month (May-Nov) - {selected_model_1} ({selected_year_1})",
-                labels={
-                    "month_name": "Month",
-                    "value": "velocity",
-                    "node": "Location",
-                },
-                height=500,
-                points="outliers",
-            )
-
-            left_boxplot.update_traces(
-                hovertemplate="<b>%{x}</b><br>Location: %{customdata}<br>velocity: %{y:.3f} CFS<extra></extra>",
-                customdata=[[node] for node in left_scenario_velocity["location"]],
-            )
-
-            left_boxplot.update_layout(
-                boxmode="group",
-                legend=dict(
-                    orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
-                ),
-                yaxis_title="velocity (CFS)",
-                xaxis_title="Month",
-                yaxis=dict(range=boxplot_ranges),
-            )
-
-            left_violin = px.violin(
-                left_scenario_velocity,
-                x="month_name",
-                y="velocity",
-                color="location",
-                box=True,  # Show box plot inside violin
-                category_orders={"month_name": list(month_names.values())},
-                title="Velocity Distribution (Violin Plot)",
-            )
-            left_violin.update_layout(yaxis=dict(range=violin_ranges))
-
-            st.plotly_chart(left_boxplot, use_container_width=True, key="left_boxplot")
-            st.plotly_chart(left_violin, use_container_width=True, key="left_boxplot")
-        else:
-            st.warning("No data available for May-November period in Scenario 1")
 
     with col2:
-        st.success(f"Scenario 2 Loaded: {selected_model_2} ({selected_year_2})")
-        st.dataframe(scenario_data_2["flow"], use_container_width=True)
-
-        velocity_summary_stats_title = f"Summary stats of fish passage from {right_glc_min_date} to {left_glc_max_date}."
-        gate_summary_stats_title = f"Summary stats of upstream of gate from {right_glc_min_date} to {left_glc_max_date}."
-        min_max_summary_title = f"Min max stats of fish passage from {right_glc_min_date} to {left_glc_max_date}."
-
-        velocity_summary_data = {
-            "Location": [
-                location_gate[right_glc_vel_gate_data["full_merged_df"]["gate"][0]],
-                location_gate[right_mid_vel_gate_data["full_merged_df"]["gate"][0]],
-                location_gate[right_old_vel_gate_data["full_merged_df"]["gate"][0]],
-            ],
-            f"Average Daily Time (Hours) {right_glc_vel_gate_data["avg_daily_velocity"]['Velocity_Category'][0]}": [
-                round(right_glc_vel_gate_data["avg_daily_velocity"]["time_unit"][0], 2),
-                round(right_mid_vel_gate_data["avg_daily_velocity"]["time_unit"][0], 2),
-                round(right_old_vel_gate_data["avg_daily_velocity"]["time_unit"][0], 2),
-            ],
-            f"Average Streak Duration (Hours) {right_glc_vel_gate_data["total_daily_velocity"]['Velocity_Category'][0]}": [
-                round(
-                    right_glc_vel_gate_data["total_daily_velocity"][
-                        "daily_average_time_per_consecutive_group"
-                    ][0],
-                    2,
-                ),
-                round(
-                    right_mid_vel_gate_data["total_daily_velocity"][
-                        "daily_average_time_per_consecutive_group"
-                    ][0],
-                    2,
-                ),
-                round(
-                    right_old_vel_gate_data["total_daily_velocity"][
-                        "daily_average_time_per_consecutive_group"
-                    ][0],
-                    2,
-                ),
-            ],
-        }
-        if len(right_glc_vel_gate_data["avg_daily_velocity"]["Velocity_Category"]) > 1:
-            velocity_summary_data[
-                f"Average Daily Time (Hours) {right_glc_vel_gate_data["avg_daily_velocity"]['Velocity_Category'][1]}"
-            ] = [
-                round(right_glc_vel_gate_data["avg_daily_velocity"]["time_unit"][1], 2)
-                if len(right_glc_vel_gate_data["avg_daily_velocity"]["time_unit"]) > 1
-                else 0,
-                round(right_mid_vel_gate_data["avg_daily_velocity"]["time_unit"][1], 2)
-                if len(right_mid_vel_gate_data["avg_daily_velocity"]["time_unit"]) > 1
-                else 0,
-                round(right_old_vel_gate_data["avg_daily_velocity"]["time_unit"][1], 2)
-                if len(right_old_vel_gate_data["avg_daily_velocity"]["time_unit"]) > 1
-                else 0,
-            ]
-        if (
-            len(right_glc_vel_gate_data["total_daily_velocity"]["Velocity_Category"])
-            > 1
-        ):
-            velocity_summary_data[
-                f"Average Streak Duration (Hours) {right_glc_vel_gate_data["total_daily_velocity"]['Velocity_Category'][1]}"
-            ] = [
-                round(
-                    right_glc_vel_gate_data["total_daily_velocity"][
-                        "daily_average_time_per_consecutive_group"
-                    ][1],
-                    2,
-                ),
-                round(
-                    right_mid_vel_gate_data["total_daily_velocity"][
-                        "daily_average_time_per_consecutive_group"
-                    ][1],
-                    2,
-                ),
-                round(
-                    right_old_vel_gate_data["total_daily_velocity"][
-                        "daily_average_time_per_consecutive_group"
-                    ][1],
-                    2,
-                ),
-            ]
-
-            gate_summary_data = {
-                "Location": [
-                    location_gate[right_glc_vel_gate_data["full_merged_df"]["gate"][0]],
-                    location_gate[right_mid_vel_gate_data["full_merged_df"]["gate"][0]],
-                    location_gate[right_old_vel_gate_data["full_merged_df"]["gate"][0]],
-                ],
-                f"Average Daily {right_glc_vel_gate_data["avg_daily_gate"]['gate_status'][0]} Time (Hours) for gate": [
-                    round(right_glc_vel_gate_data["avg_daily_gate"]["time_unit"][0], 2),
-                    round(right_mid_vel_gate_data["avg_daily_gate"]["time_unit"][0], 2),
-                    round(right_old_vel_gate_data["avg_daily_gate"]["time_unit"][0], 2),
-                ],
-                f"Average {right_glc_vel_gate_data["total_daily_gate"]['gate_status'][0]} Duration (Hours) Per Streak": [
-                    round(
-                        right_glc_vel_gate_data["total_daily_gate"][
-                            "daily_average_time_per_consecutive_gate"
-                        ][0],
-                        2,
-                    ),
-                    round(
-                        right_mid_vel_gate_data["total_daily_gate"][
-                            "daily_average_time_per_consecutive_gate"
-                        ][0],
-                        2,
-                    ),
-                    round(
-                        right_old_vel_gate_data["total_daily_gate"][
-                            "daily_average_time_per_consecutive_gate"
-                        ][0],
-                        2,
-                    ),
-                ],
-            }
-        if len(right_glc_vel_gate_data["avg_daily_gate"]["gate_status"]) > 1:
-            gate_summary_data[
-                f"Average Daily {right_glc_vel_gate_data["avg_daily_gate"]['gate_status'][1]} Time (Hours) for gate"
-            ] = [
-                round(right_glc_vel_gate_data["avg_daily_gate"]["time_unit"][1], 2)
-                if len(right_glc_vel_gate_data["avg_daily_gate"]["time_unit"]) > 1
-                else 0,
-                round(right_mid_vel_gate_data["avg_daily_gate"]["time_unit"][1], 2)
-                if len(right_mid_vel_gate_data["avg_daily_gate"]["time_unit"]) > 1
-                else 0,
-                round(right_old_vel_gate_data["avg_daily_gate"]["time_unit"][1], 2)
-                if len(right_old_vel_gate_data["avg_daily_gate"]["time_unit"]) > 1
-                else 0,
-            ]
-
-        if len(right_glc_vel_gate_data["total_daily_gate"]["gate_status"]) > 1:
-            gate_summary_data[
-                f"Average {right_glc_vel_gate_data["total_daily_gate"]['gate_status'][1]} Duration (Hours) Per Streak"
-            ] = [
-                round(
-                    right_glc_vel_gate_data["total_daily_gate"][
-                        "daily_average_time_per_consecutive_gate"
-                    ][1],
-                    2,
-                ),
-                round(
-                    right_mid_vel_gate_data["total_daily_gate"][
-                        "daily_average_time_per_consecutive_gate"
-                    ][1],
-                    2,
-                ),
-                round(
-                    right_old_vel_gate_data["total_daily_gate"][
-                        "daily_average_time_per_consecutive_gate"
-                    ][1],
-                    2,
-                ),
-            ]
-
-        min_max_summary = {
-            "Location": [
-                location_gate[right_glc_vel_gate_data["full_merged_df"]["gate"][0]],
-                location_gate[right_mid_vel_gate_data["full_merged_df"]["gate"][0]],
-                location_gate[right_old_vel_gate_data["full_merged_df"]["gate"][0]],
-            ],
-            "Minimum velocity through fish passage (ft/s)": [
-                round(min(right_glc_vel_gate_data["full_merged_df"]["velocity"]), 2),
-                round(min(right_mid_vel_gate_data["full_merged_df"]["velocity"]), 2),
-                round(min(right_old_vel_gate_data["full_merged_df"]["velocity"]), 2),
-            ],
-            "Maximum velocity through fish passage (ft/s)": [
-                round(max(right_glc_vel_gate_data["full_merged_df"]["velocity"]), 2),
-                round(max(right_mid_vel_gate_data["full_merged_df"]["velocity"]), 2),
-                round(max(right_old_vel_gate_data["full_merged_df"]["velocity"]), 2),
-            ],
-        }
-
-        velocity_summary_df = pd.DataFrame(velocity_summary_data)
-        gate_summary_df = pd.DataFrame(gate_summary_data)
-        min_max_vel_summary_df = pd.DataFrame(min_max_summary)
-
-        st.dataframe(
-            velocity_summary_df.style.highlight_max(
-                subset=velocity_summary_df.columns[1:], color="#ffffc5"
-            ).format(precision=2)
+        render_scenario(
+            right_data,
+            selected_model_right,
+            selected_year_right,
+            month_names=month_names,
+            boxplot_config={"range": boxplot_ranges, "key": "right_boxplot"},
+            violin_config={"range": violin_ranges, "key": "right_violin"},
         )
-        st.dataframe(
-            min_max_vel_summary_df.style.highlight_max(
-                subset=min_max_vel_summary_df.columns[1:], color="#ffffc5"
-            ).format(precision=2)
-        )
-        st.dataframe(
-            gate_summary_df.style.highlight_max(
-                subset=gate_summary_df.columns[1:], color="#ffffc5"
-            ).format(precision=2)
-        )
-
-        if not right_scenario_velocity.empty:
-            right_boxplot = px.box(
-                right_scenario_velocity,
-                x="month_name",
-                y="velocity",
-                color="location",
-                category_orders={"month_name": list(month_names.values())},
-                title=f"Velocity by Month (May-Nov) - {selected_model_1} ({selected_year_1})",
-                labels={
-                    "month_name": "Month",
-                    "value": "velocity",
-                    "node": "Location",
-                },
-                height=500,
-                points="outliers",
-            )
-
-            right_boxplot.update_traces(
-                hovertemplate="<b>%{x}</b><br>Location: %{customdata}<br>velocity: %{y:.3f} CFS<extra></extra>",
-                customdata=[[node] for node in right_scenario_velocity["location"]],
-            )
-
-            right_boxplot.update_layout(
-                boxmode="group",
-                legend=dict(
-                    orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1
-                ),
-                yaxis_title="velocity (CFS)",
-                xaxis_title="Month",
-                yaxis=dict(range=boxplot_ranges),
-            )
-
-            right_violin = px.violin(
-                right_scenario_velocity,
-                x="month_name",
-                y="velocity",
-                color="location",
-                box=True,  # Show box plot inside violin
-                category_orders={"month_name": list(month_names.values())},
-                title="Velocity Distribution (Violin Plot)",
-            )
-            right_violin.update_layout(yaxis=dict(range=violin_ranges))
-
-            st.plotly_chart(right_boxplot, use_container_width=True, key="right_boc")
-            st.plotly_chart(right_violin, use_container_width=True, key="right_violin")
-        else:
-            st.warning("No data available for May-November period in Scenario 1")
-
 else:
     st.write("Please select the scenarios and years, then click 'Submit' view data")
