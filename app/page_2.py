@@ -16,6 +16,9 @@ from db import (
     get_all_gate_settings,
 )
 
+from typing import Dict, List, Any
+from dataclasses import dataclass
+
 
 @st.cache_data
 def load_scenario_data(scenario, year):
@@ -49,19 +52,22 @@ def get_scenario_and_year_selection(
     return selected_model, selected_year
 
 
-def render_scenario(
-    data,
-    selected_model,
-    selected_year,
-    month_names,
-    boxplot_config,
-    violin_config,
-):
-    boxplot_ranges = boxplot_config.get("range")
-    boxplot_key = boxplot_config.get("key")
-    violin_ranges = violin_config.get("range")
-    violin_key = violin_config.get("key")
+@dataclass
+class ScenarioPlotConfig:
+    key: str
+    legend: None | Dict = None
+    xaxis: None | Dict = None
+    yaxis: None | Dict = None
 
+
+def render_scenario(
+    data: Dict[str, DataFrame],
+    selected_model: str,
+    selected_year: Any,
+    month_names: Dict[int, str],
+    boxplot_config: ScenarioPlotConfig,
+    violin_config: ScenarioPlotConfig,
+):
     ops_data = data["ops_data"].sort_values(by="datetime")
     ops_data["month_name"] = ops_data["datetime"].dt.month.map(month_names)
 
@@ -88,7 +94,7 @@ def render_scenario(
         {
             False: "Average Daily (hours) Under 8 ft/s",
             True: "Average Daily (hours) Over 8 ft/s",
-        }
+        }  # type: Ignore
     )
     avg_daily_velocity_display = avg_daily_velocity_display.pivot_table(
         index="gate", columns="is_over_8fs", values="time_unit"
@@ -244,7 +250,8 @@ def render_scenario(
             ),
             yaxis_title="velocity (CFS)",
             xaxis_title="Month",
-            yaxis=dict(range=boxplot_ranges),
+            yaxis=boxplot_config.yaxis,
+            xaxis=boxplot_config.xaxis,
         )
 
         violin_plot = px.violin(
@@ -257,7 +264,8 @@ def render_scenario(
             title="Velocity Distribution (Violin Plot)",
         )
         violin_plot.update_layout(
-            yaxis=dict(range=violin_ranges),
+            yaxis=violin_config.yaxis,
+            xaxis=violin_config.xaxis,
             legend=dict(
                 orientation="h",
                 y=1.1,
@@ -266,8 +274,8 @@ def render_scenario(
             ),
         )
 
-        st.plotly_chart(boxplot, use_container_width=True, key=boxplot_key)
-        st.plotly_chart(violin_plot, use_container_width=True, key=violin_key)
+        st.plotly_chart(boxplot, use_container_width=True, key=boxplot_config.key)
+        st.plotly_chart(violin_plot, use_container_width=True, key=violin_config.key)
     else:
         st.warning(f"No data available for May-November period in this scenario")
 
@@ -574,24 +582,48 @@ if submit_button:
         ),
     ]
 
+    global_box_yaxis = dict(range=boxplot_ranges, showline=True, ticklabelstandoff=5)
+    global_violin_yaxis = dict(range=violin_ranges, showline=True, ticklabelstandoff=5)
+    global_xaxis = dict(showline=True)
+
     with col1:
+        boxplot_config = ScenarioPlotConfig(
+            key="left_boxplot",
+            yaxis=global_box_yaxis,
+            xaxis=global_xaxis,
+        )
+        violin_config = ScenarioPlotConfig(
+            key="left_violin",
+            yaxis=global_violin_yaxis,
+            xaxis=global_xaxis,
+        )
         render_scenario(
             left_data,
             selected_model_left,
             selected_year_left,
             month_names=month_names,
-            boxplot_config={"range": boxplot_ranges, "key": "left_boxplot"},
-            violin_config={"range": violin_ranges, "key": "left_violin"},
+            boxplot_config=boxplot_config,
+            violin_config=violin_config,
         )
 
     with col2:
+        boxplot_config = ScenarioPlotConfig(
+            key="right_boxplot",
+            yaxis=global_box_yaxis,
+            xaxis=global_xaxis,
+        )
+        violin_config = ScenarioPlotConfig(
+            key="right_violin",
+            yaxis=global_violin_yaxis,
+            xaxis=global_xaxis,
+        )
         render_scenario(
             right_data,
             selected_model_right,
             selected_year_right,
             month_names=month_names,
-            boxplot_config={"range": boxplot_ranges, "key": "right_boxplot"},
-            violin_config={"range": violin_ranges, "key": "right_violin"},
+            boxplot_config=boxplot_config,
+            violin_config=violin_config,
         )
 else:
     st.write("Please select the scenarios and years, then click 'Submit' view data")
