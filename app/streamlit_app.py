@@ -14,6 +14,7 @@ pg = st.navigation(
         #     st.Page("page_4.py", title="100 Year CalSim Based Simulation")
         # ],
         # "Data Explorer": [st.Page("data_explorer.py", title="Data Explorer")],
+        "Map": [st.Page("map.py", title="Map")],
         "Scenario Inventory": [
             st.Page("scenario_inventory.py", title="Scenario Inventory")
         ],

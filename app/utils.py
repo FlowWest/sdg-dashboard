@@ -28,6 +28,14 @@ def update_available_years(scenario_name, available_years):
     cur.close()
     conn.close()
 
-# Example Usage
-update_available_years("FPV1Ma", [2016, 2017])
-update_available_years("FPV2Ma", [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023])
+
+MONTH_NAMES = {
+        5: "May",
+        6: "Jun",
+        7: "Jul",
+        8: "Aug",
+        9: "Sep",
+        10: "Oct",
+        11: "Nov",
+    }
+
