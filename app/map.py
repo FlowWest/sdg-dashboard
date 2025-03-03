@@ -1,6 +1,13 @@
 import folium
 import streamlit as st
 from streamlit_folium import st_folium
+import geopandas as gpd
+
+
+dsm2_channels = gpd.read_file(
+    "data-raw/fc2024.01_chan/FC2024.01_channels_centerlines.shp"
+)
+dsm2_channels = dsm2_channels.to_crs(epsg=4326)
 
 month_names = {
     5: "May",
@@ -15,17 +22,35 @@ month_names = {
 
 st.title("Map")
 
-col_left, col_right = st.columns([1, 5])
+col_left, col_right = st.columns([1, 4])
+
+m = folium.Map(
+    location=[
+        dsm2_channels.union_all().centroid.y,
+        dsm2_channels.union_all().centroid.x,
+    ]
+)
+
 
 with col_left:
-    st.write("controls")
+    st.markdown(
+        """
+        Each difference (min, max, mean) 
+        represents a comparison of the summarized values for a specific year, 
+        month with an option to summarize by month or day. 
+        Daily summaries are the summary of daily 5-minute increments. 
+        Monthly summarize represent the min, max, or mean of the daily summaries.
+        """
+    )
     st.selectbox("Select Year", options=range(2016, 2024))
     st.selectbox("Select Month", options=month_names)
+    st.select_slider("Select Year", options=range(2016, 2024))
 
 with col_right:
-    m = folium.Map(location=[39.949610, -75.150282], zoom_start=16)
-    folium.Marker(
-        [39.949610, -75.150282], popup="Liberty Bell", tooltip="Liberty Bell"
-    ).add_to(m)
-
+    channel_lines = dsm2_channels[dsm2_channels.geometry.type == "LineString"]
+    for index, row in channel_lines.iterrows():
+        locs = [(y, x) for x, y in row.geometry.coords]
+        folium.PolyLine(
+            locations=locs, color="blue", weight=2.5, tooltip=f"Channel ID: {row['id']}"
+        ).add_to(m)
     st_data = st_folium(m, use_container_width=True)
