@@ -3,6 +3,8 @@ import streamlit as st
 from streamlit_folium import folium_static, st_folium
 import geopandas as gpd
 import pandas as pd
+import branca.colormap as cm
+import numpy as np
 
 
 dsm2_channels = gpd.read_file(
@@ -23,17 +25,27 @@ month_names = {
 baseline_data = pd.read_csv("baseline-data.csv", parse_dates=["Date"])
 scenario_data = pd.read_csv("fpv2mb-data.csv", parse_dates=["Date"])
 
+
 baseline_data["year"] = baseline_data["Date"].dt.year
+baseline_data["month"] = baseline_data["Date"].dt.month
+baseline_by_month = (
+    baseline_data.groupby(["channel_id", "month"])["daily_avg"].mean().reset_index()
+)
+may_baseline = baseline_by_month[baseline_by_month["month"] == 5]
 
-dsm2_channels_with_stage = dsm2_channels
-# .merge(
-#     baseline_data, how="left", left_on="id", right_on="channel_id"
-# )
-
+dsm2_channels_with_stage = dsm2_channels.merge(
+    may_baseline, how="left", left_on="id", right_on="channel_id"
+)
 
 st.title("Map")
 
 col_left, col_right = st.columns([1, 4])
+
+linear = cm.LinearColormap(
+    colors=["blue", "white", "red"],
+    vmin=may_baseline["daily_avg"].min(),
+    vmax=may_baseline["daily_avg"].max(),
+)
 
 
 def get_or_create_map():
@@ -46,6 +58,7 @@ def get_or_create_map():
             width="100%",
             height="100%",
         )
+        m.add_child(linear)
         channel_lines = dsm2_channels_with_stage[
             dsm2_channels_with_stage.geometry.type == "LineString"
         ]
@@ -53,7 +66,9 @@ def get_or_create_map():
             locs = [(y, x) for x, y in row.geometry.coords]
             folium.PolyLine(
                 locations=locs,
-                color="blue",
+                color="#808080"
+                if np.isnan(row["daily_avg"])
+                else linear(row["daily_avg"]),
                 weight=5,
             ).add_to(m)
         st.session_state.map = m
