@@ -496,6 +496,8 @@ def generate_zoomed_velocity_charts(filtered_merged_df, min_velocity, max_veloci
         .drop_duplicates()
         .reset_index(drop=True)
     )
+    print("CLOSED GATES")
+    print(max(closed_gates.gate_max_datetime))
     color_scale = alt.Scale(
         domain=["Closed"], range=[color_palette["gate_status"]["Closed"]]
     )

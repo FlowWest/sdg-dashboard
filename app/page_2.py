@@ -273,9 +273,46 @@ def render_scenario(
                 xanchor="center",
             ),
         )
+        
+        xrule = alt.Chart(ops_data).mark_rule(
+            color="red", 
+            strokeDash=[12, 6], 
+            size=1.5
+        ).encode(
+            x=alt.datum(8),
+        )
+        gates = ops_data['gate'].unique()
+        v_hist_charts = {}
 
+        for gate in gates:
+            ops_data_gate = ops_data[ops_data['gate'] == gate]
+
+            v_hist_charts[gate] = alt.Chart(ops_data_gate).transform_joinaggregate(
+                total='count(*)'
+            ).transform_calculate(
+                pct='1/datum.total',
+            ).mark_bar(
+                color="#1f78b4",
+                opacity=0.7
+            ).encode(
+                alt.X('velocity:Q', title="Velocity (ft/s)", bin=alt.Bin(step=2)),
+                alt.Y('sum(pct):Q', title="Percent of Total Time", axis=alt.Axis(format='%')),
+                alt.Tooltip("sum(pct):Q", format="%"),
+            ).properties(
+                width=300,
+                height=500,
+                title=f"Velocity Through Fish Passage at {gate}"
+            )
+            v_hist_charts[gate] = alt.layer(v_hist_charts[gate], xrule)
         st.plotly_chart(boxplot, use_container_width=True, key=boxplot_config.key)
         st.plotly_chart(violin_plot, use_container_width=True, key=violin_config.key)
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.altair_chart(v_hist_charts[gates[0]], use_container_width=True)
+        with col2:
+            st.altair_chart(v_hist_charts[gates[1]], use_container_width=True)
+        with col3:
+            st.altair_chart(v_hist_charts[gates[2]], use_container_width=True)
     else:
         st.warning(f"No data available for May-November period in this scenario")
 
