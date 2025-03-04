@@ -1,5 +1,9 @@
 scratch/*
 *.streamlit/*
+data-raw/*/*.csv
+data-raw/*/*.zip
+*.zip
+*.csv
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
