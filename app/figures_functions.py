@@ -496,6 +496,8 @@ def generate_zoomed_velocity_charts(filtered_merged_df, min_velocity, max_veloci
         .drop_duplicates()
         .reset_index(drop=True)
     )
+    print("CLOSED GATES")
+    print(max(closed_gates.gate_max_datetime))
     color_scale = alt.Scale(
         domain=["Closed"], range=[color_palette["gate_status"]["Closed"]]
     )
@@ -918,3 +920,48 @@ def generate_water_level_chart(filtered_hydro_df, filtered_merged_df):
     ).properties(width=700, height=400, title=f"Modeled Water Level at {gate}")
     return min_stage_chart
 
+def create_velocity_hist_chart(df, gate):
+    xrule = alt.Chart(df).mark_rule(
+            color="red", 
+            strokeDash=[12, 6], 
+            size=1.5
+        ).encode(
+            x=alt.datum(8),
+        )
+    v_hist =  alt.Chart(df).transform_joinaggregate(
+            total='count(*)'
+        ).transform_calculate(
+            pct='1/datum.total',
+        ).mark_bar(
+            color="#1f78b4",
+            opacity=0.7
+        ).encode(
+            alt.X('velocity:Q', title="Velocity (ft/s)", bin=alt.Bin(step=2)),
+            alt.Y('sum(pct):Q', title="Percent of Total Time", axis=alt.Axis(format='%')),
+            alt.Tooltip("sum(pct):Q", format="%"),
+        ).properties(
+            width=300,
+            height=500,
+            title=f"Velocity Through Fish Passage at {gate}"
+        )
+    return(alt.layer(v_hist, xrule))
+    
+
+def create_streak_hist_chart(df, gate):
+    streak_duration_counts = df.groupby(["group_min_datetime", "duration"]).size().reset_index(name="count").drop("count", axis=1)
+    return alt.Chart(streak_duration_counts).transform_joinaggregate(
+        total='count(*)'
+    ).transform_calculate(
+        pct='1/datum.total'
+    ).mark_bar(
+        color="#b2df8a",
+        opacity=0.7
+    ).encode(
+        x=alt.X("duration:Q", bin=alt.Bin(step=2), title="Hours"),
+        y=alt.Y("sum(pct):Q", title="Percent of Ebb Tides", axis=alt.Axis(format='%')),
+        tooltip=alt.Tooltip("sum(pct):Q", format="%")
+    ).properties(
+        title=f"Consecutive number of hours above 8ft/s at {gate}",
+        width=600,
+        height=400
+    )

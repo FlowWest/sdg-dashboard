@@ -274,8 +274,24 @@ def render_scenario(
             ),
         )
 
+        gates = ops_data['gate'].unique()
+        ops_data_by_gate = {gate: ops_data[ops_data['gate'] == gate] for gate in gates}
+        ops_data_filtered_by_velocity = {gate:ops_data_by_gate[gate][ops_data_by_gate[gate]['is_over_8fs']] for gate in ops_data_by_gate}
+        v_hist_charts = {gate: create_velocity_hist_chart(df, gate) for gate, df in ops_data_by_gate.items()}
+        streak_hist_charts = {gate: create_streak_hist_chart(df, gate) for gate, df in ops_data_filtered_by_velocity.items()}
+        
         st.plotly_chart(boxplot, use_container_width=True, key=boxplot_config.key)
         st.plotly_chart(violin_plot, use_container_width=True, key=violin_config.key)
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.altair_chart(v_hist_charts[gates[0]], use_container_width=True)
+            st.altair_chart(streak_hist_charts[gates[0]], use_container_width=True)
+        with col2:
+            st.altair_chart(v_hist_charts[gates[1]], use_container_width=True)
+            st.altair_chart(streak_hist_charts[gates[1]], use_container_width=True)
+        with col3:
+            st.altair_chart(v_hist_charts[gates[2]], use_container_width=True)
+            st.altair_chart(streak_hist_charts[gates[2]], use_container_width=True)
     else:
         st.warning(f"No data available for May-November period in this scenario")
 

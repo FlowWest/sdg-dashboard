@@ -73,9 +73,9 @@ if selected_model and selected_year:
 
 # Retrieve cached data
 scenario_data = st.session_state.scenario_data
-print(scenario_data)
+# print(scenario_data)
 scenario_year_data = st.session_state.scenario_year_data
-print(scenario_year_data)
+# print(scenario_year_data)
 # --------------------------------------------------------------------------------------------------------------------------------
 # Data wrangling
 if scenario_data and not scenario_year_data.empty:
@@ -517,7 +517,9 @@ if scenario_data and not scenario_year_data.empty:
         (old_hydro_df["datetime"] >= start_date)
         & (old_hydro_df["datetime"] <= end_date)
     ]
-    # print(filtered_glc_df)
+    print("--------------------")
+    print(filtered_old_df.gate_max_datetime.max())
+    print("--------------------.")
     # #-------------------------------------------------------------------------------------------------------
     summary_stats_title = f"Summary stats from {start_date} to {end_date}."
     filtered_glc_avg_daily_velocity = calc_avg_daily_vel(filtered_glc_df)
