@@ -30,6 +30,11 @@ def get_dsm2_daily_summaries_for_map(scenario_id, years):
     return get_dsm2_daily_summaries(scenario_id, years)
 
 
+@st.cache_data
+def filter_daily_summaries_to_month(data, selected_month):
+    return data[data["date"].dt.month == selected_month]
+
+
 def get_or_create_map(map_data, color_map):
     if "map" not in st.session_state:
         m = folium.Map(
@@ -70,7 +75,7 @@ with col_left:
     )
 
     selected_year = st.selectbox("Select Year", options=range(2016, 2024))
-    st.selectbox("Select Month", options=month_names)
+    selected_month = st.selectbox("Select Month", options=month_names)
 
     left_selected_scenario = st.selectbox(
         "Select Scenario A",
@@ -91,14 +96,17 @@ with col_left:
 monthly_summaries = get_dsm2_daily_summaries_for_map(
     scenario_id=12, years=[selected_year]
 )
+monthly_summaries = filter_daily_summaries_to_month(
+    monthly_summaries, selected_month=selected_month
+)
+
 monthly_summaries["month"] = monthly_summaries["date"].dt.month
-monthly_summaries = monthly_summaries[monthly_summaries["month"] == 6]
+
 monthly_summaries_by_month = (
     monthly_summaries.groupby(["channel_id", "month"])["daily_minimum"]
     .mean()
     .reset_index()
 )
-
 
 dsm2_channels_with_stage = dsm2_channels.merge(
     monthly_summaries_by_month, how="left", left_on="id", right_on="channel_id"
