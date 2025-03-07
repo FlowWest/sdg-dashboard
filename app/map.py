@@ -5,6 +5,7 @@ import geopandas as gpd
 import pandas as pd
 import branca.colormap as cm
 import numpy as np
+from db import get_dsm2_daily_summaries, get_dsm2_daily_summaries
 
 
 dsm2_channels = gpd.read_file(
@@ -21,61 +22,43 @@ month_names = {
     11: "Nov",
 }
 
-
-baseline_data = pd.read_csv("baseline-data.csv", parse_dates=["Date"])
-scenario_data = pd.read_csv("fpv2mb-data.csv", parse_dates=["Date"])
-
-
-baseline_data["year"] = baseline_data["Date"].dt.year
-baseline_data["month"] = baseline_data["Date"].dt.month
-baseline_by_month = (
-    baseline_data.groupby(["channel_id", "month"])["daily_avg"].mean().reset_index()
-)
-may_baseline = baseline_by_month[baseline_by_month["month"] == 5]
-
-dsm2_channels_with_stage = dsm2_channels.merge(
-    may_baseline, how="left", left_on="id", right_on="channel_id"
-)
-
-st.title("Map")
-
 col_left, col_right = st.columns([1, 4])
 
-linear = cm.LinearColormap(
-    colors=["blue", "white", "red"],
-    vmin=may_baseline["daily_avg"].min(),
-    vmax=may_baseline["daily_avg"].max(),
-)
+
+@st.cache_data
+def get_dsm2_daily_summaries_for_map(scenario_id, years):
+    return get_dsm2_daily_summaries(scenario_id, years)
 
 
-def get_or_create_map():
-    if "map" not in st.session_state or st.session_state is None:
+def get_or_create_map(map_data, color_map):
+    if "map" not in st.session_state:
         m = folium.Map(
             location=[
-                dsm2_channels_with_stage.union_all().centroid.y,
-                dsm2_channels_with_stage.union_all().centroid.x,
+                map_data.union_all().centroid.y,
+                map_data.union_all().centroid.x,
             ],
             width="100%",
             height="100%",
         )
-        m.add_child(linear)
-        channel_lines = dsm2_channels_with_stage[
-            dsm2_channels_with_stage.geometry.type == "LineString"
-        ]
+        m.add_child(color_map)
+        channel_lines = map_data[map_data.geometry.type == "LineString"]
         for index, row in channel_lines.iterrows():
             locs = [(y, x) for x, y in row.geometry.coords]
             folium.PolyLine(
                 locations=locs,
                 color="#808080"
-                if np.isnan(row["daily_avg"])
-                else linear(row["daily_avg"]),
+                if np.isnan(row["daily_minimum"])
+                else color_map(row["daily_minimum"]),
                 weight=5,
+                tooltip=folium.Tooltip(f"Value: {row.get("daily_minimum")}"),
             ).add_to(m)
         st.session_state.map = m
     return st.session_state.map
 
 
+# set up UI stuff
 with col_left:
+    st.title("Map")
     st.markdown(
         """
         Each difference (min, max, mean) 
@@ -85,10 +68,56 @@ with col_left:
         Monthly summarize represent the min, max, or mean of the daily summaries.
         """
     )
+
     selected_year = st.selectbox("Select Year", options=range(2016, 2024))
     st.selectbox("Select Month", options=month_names)
-    st.select_slider("Select Year", options=range(2016, 2024))
-    filtered_data = baseline_data[baseline_data["year"] == selected_year]
+
+    left_selected_scenario = st.selectbox(
+        "Select Scenario A",
+        options=["FPV2Ma", "FPV2Mb", "baseline"],
+        key="left_selected_scenario",
+    )
+
+    right_selected_scenario = st.selectbox(
+        "Select Scenario B",
+        options=["FPV2Ma", "FPV2Mb", "baseline"],
+        key="right_seleted_scenario",
+    )
+
+    map_options = st.popover("Additional Plot Options")
+    selected_map_color_ramp = map_options.selectbox("hello", options=[1, 2, 2, 3])
+
+
+monthly_summaries = get_dsm2_daily_summaries_for_map(
+    scenario_id=12, years=[selected_year]
+)
+monthly_summaries["month"] = monthly_summaries["date"].dt.month
+monthly_summaries = monthly_summaries[monthly_summaries["month"] == 6]
+monthly_summaries_by_month = (
+    monthly_summaries.groupby(["channel_id", "month"])["daily_minimum"]
+    .mean()
+    .reset_index()
+)
+
+
+dsm2_channels_with_stage = dsm2_channels.merge(
+    monthly_summaries_by_month, how="left", left_on="id", right_on="channel_id"
+)
+
+linear_map = cm.LinearColormap(
+    colors=["blue", "white", "red"],
+    vmin=dsm2_channels_with_stage["daily_minimum"].min(),  # type: ignore
+    vmax=dsm2_channels_with_stage["daily_minimum"].max(),  # type: ignore
+)
+
+# becuase my laptop crashes
+if len(dsm2_channels_with_stage) > 600:
+    raise ValueError(
+        f"too much data, saving you from having to hard reboot your laptop, the left is {len(dsm2_channels)} and right is {len(monthly_summaries)}"
+    )
 
 with col_right:
-    folium_static(get_or_create_map(), width=1400, height=600)
+    folium_static(
+        get_or_create_map(dsm2_channels_with_stage, linear_map), width=1400, height=600
+    )
+    st.dataframe(dsm2_channels_with_stage)

@@ -1,7 +1,8 @@
 import streamlit as st
 import pandas as pd
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, bindparam
 from dataclasses import dataclass
+from typing import List
 
 
 @st.cache_resource
@@ -17,6 +18,22 @@ engine = get_db_connection()
 def get_all_scenarios():
     q = """ SELECT name as "Scenario", comments as "Comments" from scenarios; """
     return pd.read_sql(q, engine)
+
+
+def get_dsm2_daily_summaries(scenario_id: int, years: List[int]):
+    q = text(
+        """
+        SELECT * FROM channel_stage 
+        WHERE date_part('year', date) IN :years and scenario_id = :scenario_id;
+        """
+    ).bindparams(bindparam("years", expanding=True))
+    df = pd.read_sql(
+        q,
+        engine,
+        parse_dates=["date"],
+        params={"years": years, "scenario_id": scenario_id},
+    )
+    return df
 
 
 def get_available_years(scenario):
