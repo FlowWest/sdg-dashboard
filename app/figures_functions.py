@@ -965,3 +965,29 @@ def create_streak_hist_chart(df, gate):
         width=600,
         height=400
     )
+
+def create_elev_hist_chart(hydro_df, gate, min_elev):
+    xrule = alt.Chart(hydro_df).mark_rule(
+            color="red", 
+            strokeDash=[12, 6], 
+            size=1.5
+        ).encode(
+            x=alt.datum(min_elev),
+        )
+    elev_hist =  alt.Chart(hydro_df).transform_joinaggregate(
+            total='count(*)'
+        ).transform_calculate(
+            pct='1/datum.total',
+        ).mark_bar(
+            color="#1f78b4",
+            opacity=0.7
+        ).encode(
+            alt.X('water_level:Q', title="ft NAVD88", bin=alt.Bin(step=0.5)),
+            alt.Y('sum(pct):Q', title="% of Total Time during OP Season", axis=alt.Axis(format='%')),
+            alt.Tooltip("sum(pct):Q", format="%"),
+        ).properties(
+            width=300,
+            height=500,
+            title=f"Daily Minimum Stage at {gate}"
+        )
+    return(alt.layer(elev_hist, xrule))
