@@ -937,19 +937,19 @@ def create_velocity_hist_chart(df, gate):
             opacity=0.7
         ).encode(
             alt.X('velocity:Q', title="Velocity (ft/s)", bin=alt.Bin(step=2)),
-            alt.Y('sum(pct):Q', title="Percent of Total Time", axis=alt.Axis(format='%')),
+            alt.Y('sum(pct):Q', title="Percent of Total Time", axis=alt.Axis(format='%'), scale=alt.Scale(domain=[0, 0.4])),
             alt.Tooltip("sum(pct):Q", format="%"),
         ).properties(
             width=300,
             height=500,
-            title=f"Velocity Through Fish Passage at {gate}"
+            title=f"Velocity through \n{gate} fish passage"
         )
     return(alt.layer(v_hist, xrule))
     
 
 def create_streak_hist_chart(df, gate):
     streak_duration_counts = df.groupby(["group_min_datetime", "duration"]).size().reset_index(name="count").drop("count", axis=1)
-    return alt.Chart(streak_duration_counts).transform_joinaggregate(
+    streak_hist =  alt.Chart(streak_duration_counts).transform_joinaggregate(
         total='count(*)'
     ).transform_calculate(
         pct='1/datum.total'
@@ -958,21 +958,22 @@ def create_streak_hist_chart(df, gate):
         opacity=0.7
     ).encode(
         x=alt.X("duration:Q", bin=alt.Bin(step=2), title="Hours"),
-        y=alt.Y("sum(pct):Q", title="Percent of Ebb Tides", axis=alt.Axis(format='%')),
+        y=alt.Y("sum(pct):Q", title="Percent of Ebb Tides", axis=alt.Axis(format='%'), scale=alt.Scale(domain=[0, 0.4])),
         tooltip=alt.Tooltip("sum(pct):Q", format="%")
     ).properties(
-        title=f"Consecutive number of hours above 8ft/s at {gate}",
-        width=600,
-        height=400
+        title=f"{gate} consecutive hours \nabove 8ft/s",
+        width=300,
+        height=500
     )
+    return(streak_hist)
 
-def create_elev_hist_chart(hydro_df, gate, min_elev):
+def create_elev_hist_chart(hydro_df, gate):
     xrule = alt.Chart(hydro_df).mark_rule(
             color="red", 
             strokeDash=[12, 6], 
             size=1.5
         ).encode(
-            x=alt.datum(min_elev),
+            x=alt.datum(2.3),
         )
     elev_hist =  alt.Chart(hydro_df).transform_joinaggregate(
             total='count(*)'
@@ -983,11 +984,14 @@ def create_elev_hist_chart(hydro_df, gate, min_elev):
             opacity=0.7
         ).encode(
             alt.X('water_level:Q', title="ft NAVD88", bin=alt.Bin(step=0.5)),
-            alt.Y('sum(pct):Q', title="% of Total Time during OP Season", axis=alt.Axis(format='%')),
-            alt.Tooltip("sum(pct):Q", format="%"),
+            alt.Y('sum(pct):Q', 
+                  title="% of Total Time during OP Season", 
+                  axis=alt.Axis(format='%'),
+                  scale=alt.Scale(domain=[0, 0.4])),
+            alt.Tooltip("sum(pct):Q", format="%")
         ).properties(
             width=300,
             height=500,
-            title=f"Daily Minimum Stage at {gate}"
+            title=f"Daily minimum stage at {gate}"
         )
     return(alt.layer(elev_hist, xrule))

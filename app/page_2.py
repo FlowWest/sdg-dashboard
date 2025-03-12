@@ -24,8 +24,23 @@ from dataclasses import dataclass
 def load_scenario_data(scenario, year):
     scenario_year_data = get_scenario_year_data(scenario, year)
     scenario_data = generate_scenario_year_data(scenario_year_data)
+    print(scenario_data.keys())
     return scenario_year_data, scenario_data
 
+def full_post_process_hydro_data(
+    data, model, year=None, start_date=None, end_date=None
+):
+    # print(data)
+    hydro_df = data["water_levels"]
+    if year:
+        hydro_df["year"] = hydro_df["datetime"].dt.year
+        hydro_df = hydro_df[hydro_df["year"] == year]
+    hydro_df = hydro_df.loc[hydro_df["datetime"].dt.month.between(5, 11)]
+    hydro_df["time_unit"] = 0.25
+    hydro_df = hydro_df.rename(columns={"value": "water_level"})
+    hydro_df["week"] = hydro_df["datetime"].dt.isocalendar().week
+    # hydro_df = hydro_df[hydro_df.node == gate]
+    return hydro_df
 
 def get_scenario_and_year_selection(
     column,
@@ -62,6 +77,7 @@ class ScenarioPlotConfig:
 
 def render_scenario(
     data: Dict[str, DataFrame],
+    hydro_data,
     selected_model: str,
     selected_year: Any,
     month_names: Dict[int, str],
@@ -273,25 +289,31 @@ def render_scenario(
                 xanchor="center",
             ),
         )
-
         gates = ops_data['gate'].unique()
         ops_data_by_gate = {gate: ops_data[ops_data['gate'] == gate] for gate in gates}
         ops_data_filtered_by_velocity = {gate:ops_data_by_gate[gate][ops_data_by_gate[gate]['is_over_8fs']] for gate in ops_data_by_gate}
         v_hist_charts = {gate: create_velocity_hist_chart(df, gate) for gate, df in ops_data_by_gate.items()}
         streak_hist_charts = {gate: create_streak_hist_chart(df, gate) for gate, df in ops_data_filtered_by_velocity.items()}
+        hydro_locations = ["dgl", "old", "mho"]
+        hydro_data_by_gate = {location: hydro_data[hydro_data.node== location] for location in hydro_locations}
+        elev_hist_charts = {location: create_elev_hist_chart(df, location) for location, df in hydro_data_by_gate.items()}
         
         st.plotly_chart(boxplot, use_container_width=True, key=boxplot_config.key)
         st.plotly_chart(violin_plot, use_container_width=True, key=violin_config.key)
         col1, col2, col3 = st.columns(3)
         with col1:
+            print(ops_data.columns)
             st.altair_chart(v_hist_charts[gates[0]], use_container_width=True)
             st.altair_chart(streak_hist_charts[gates[0]], use_container_width=True)
+            st.altair_chart(elev_hist_charts[hydro_locations[0]], use_container_width=True)
         with col2:
             st.altair_chart(v_hist_charts[gates[1]], use_container_width=True)
             st.altair_chart(streak_hist_charts[gates[1]], use_container_width=True)
+            st.altair_chart(elev_hist_charts[hydro_locations[1]], use_container_width=True)
         with col3:
             st.altair_chart(v_hist_charts[gates[2]], use_container_width=True)
             st.altair_chart(streak_hist_charts[gates[2]], use_container_width=True)
+            st.altair_chart(elev_hist_charts[hydro_locations[2]], use_container_width=True)
     else:
         st.warning(f"No data available for May-November period in this scenario")
 
@@ -564,6 +586,8 @@ if submit_button:
 
     left_data = generate_vel_gate_data(scenario_data_left, selected_model_left)
     right_data = generate_vel_gate_data(scenario_data_right, selected_model_right)
+    left_hydro_data = full_post_process_hydro_data(scenario_data_left, selected_model_left)
+    right_hydro_data = full_post_process_hydro_data(scenario_data_right, selected_model_right)
 
     left_ops_data = left_data["ops_data"].sort_values(by=["gate", "datetime"])
     left_min_dates = left_ops_data.groupby("gate")["datetime"].min().reset_index()
@@ -615,6 +639,7 @@ if submit_button:
         )
         render_scenario(
             left_data,
+            left_hydro_data,
             selected_model_left,
             selected_year_left,
             month_names=month_names,
@@ -635,6 +660,7 @@ if submit_button:
         )
         render_scenario(
             right_data,
+            right_hydro_data,
             selected_model_right,
             selected_year_right,
             month_names=month_names,
