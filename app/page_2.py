@@ -564,7 +564,7 @@ with col2:
 submit_button = st.button("Submit")
 
 if submit_button:
-    st.checkbox("Show as difference from baseline", value=False)
+    # st.checkbox("Show as difference from baseline", value=False)
     scenario_year_data_left, scenario_data_left = load_scenario_data(
         selected_model_left, selected_year_left
     )
