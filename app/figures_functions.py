@@ -922,7 +922,7 @@ def generate_water_level_chart(filtered_hydro_df, filtered_merged_df):
 
 def create_velocity_hist_chart(df, gate):
     xrule = alt.Chart(df).mark_rule(
-            color="red", 
+            color="green", 
             strokeDash=[12, 6], 
             size=1.5
         ).encode(
@@ -933,16 +933,16 @@ def create_velocity_hist_chart(df, gate):
         ).transform_calculate(
             pct='1/datum.total',
         ).mark_bar(
-            color="#1f78b4",
+            color="#33a02c",
             opacity=0.7
         ).encode(
             alt.X('velocity:Q', title="Velocity (ft/s)", bin=alt.Bin(step=2)),
-            alt.Y('sum(pct):Q', title="Percent of Total Time", axis=alt.Axis(format='%'), scale=alt.Scale(domain=[0, 0.4])),
+            alt.Y('sum(pct):Q', title="Percent of Total Time", axis=alt.Axis(format='%'), scale=alt.Scale(domain=[0, 0.5])),
             alt.Tooltip("sum(pct):Q", format="%"),
         ).properties(
             width=300,
             height=500,
-            title=f"Velocity through \n{gate} fish passage"
+            title=f"Velocity through {gate} fish passage"
         )
     return(alt.layer(v_hist, xrule))
     
@@ -958,22 +958,37 @@ def create_streak_hist_chart(df, gate):
         opacity=0.7
     ).encode(
         x=alt.X("duration:Q", bin=alt.Bin(step=2), title="Hours"),
-        y=alt.Y("sum(pct):Q", title="Percent of Ebb Tides", axis=alt.Axis(format='%'), scale=alt.Scale(domain=[0, 0.4])),
+        y=alt.Y("sum(pct):Q", title="Percent of Ebb Tides", axis=alt.Axis(format='%'), scale=alt.Scale(domain=[0, 0.5])),
         tooltip=alt.Tooltip("sum(pct):Q", format="%")
     ).properties(
-        title=f"{gate} consecutive hours \nabove 8ft/s",
+        title=f"{gate} consecutive hours above 8ft/s",
         width=300,
         height=500
     )
     return(streak_hist)
 
 def create_elev_hist_chart(hydro_df, gate):
+    xrule_wl_text = (
+        alt.Chart(hydro_df)
+        .mark_text(
+            text="Water Level Compliance",
+            align="left",
+            baseline="top",
+            fontSize=9,
+            color="grey",
+            dx=5  # Offset text slightly to the right of the rule
+        )
+        .encode(
+            x=alt.datum(2.3),
+        )
+    )
     xrule = alt.Chart(hydro_df).mark_rule(
-            color="red", 
+            color="#a6cee3", 
             strokeDash=[12, 6], 
             size=1.5
         ).encode(
             x=alt.datum(2.3),
+            tooltip=alt.value("2.3")
         )
     elev_hist =  alt.Chart(hydro_df).transform_joinaggregate(
             total='count(*)'
@@ -994,4 +1009,4 @@ def create_elev_hist_chart(hydro_df, gate):
             height=500,
             title=f"Daily minimum stage at {gate}"
         )
-    return(alt.layer(elev_hist, xrule))
+    return(alt.layer(elev_hist, xrule, xrule_wl_text))
