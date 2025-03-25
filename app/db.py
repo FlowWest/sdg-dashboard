@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 from sqlalchemy import create_engine, text
+from dataclasses import dataclass
 
 
 @st.cache_resource
@@ -11,19 +12,24 @@ def get_db_connection():
 
 engine = get_db_connection()
 
+
+@st.cache_data
 def get_all_scenarios():
     q = """ SELECT name as "Scenario", comments as "Comments" from scenarios; """
     return pd.read_sql(q, engine)
 
+
 def get_available_years(scenario):
     q = text(
         """SELECT unnest(available_years) FROM scenarios WHERE name = :scenario ; 
-        """)
+        """
+    )
     params = {"scenario": scenario}
     df = pd.read_sql(q, engine, params=params)  # Get DataFrame
     return df.iloc[:, 0].tolist()  # Convert first column to list
 
-def get_scenario_year_data(scenario="FPV1Ma", year=2016):
+
+def get_scenario_year_data(scenario, year):
     q = text(""" 
         SELECT * from dsm2 
         WHERE
@@ -36,6 +42,12 @@ def get_scenario_year_data(scenario="FPV1Ma", year=2016):
     return pd.read_sql(q, engine, params=params)
 
 
+@st.cache_data
+def get_all_gate_settings():
+    q = text("""SELECT * from gate_settings;""")
+    return pd.read_sql(q, engine)
+
+
 # ---- utils
 def calculate_vel(flow_fish, gate_ops, elev, width):
     d = flow_fish.merge(gate_ops, on=["datetime"])
@@ -46,6 +58,9 @@ def calculate_vel(flow_fish, gate_ops, elev, width):
 
 
 def generate_scenario_year_data(data, widths=[5, 5, 5], elevs=[-6, -5, -7]):
+    """
+    take data from sql query and arrange so that the visualizations are easy to implement
+    """
     flow_op_nodes = ["glc_flow_fish", "mid_flow_fish", "old_flow_fish"]
     gate_up_nodes = ["glc_gate_up", "mid_gate_up", "old_gate_up"]
     names_in_order = ["glc", "mid", "old"]
