@@ -73,9 +73,9 @@ if selected_model and selected_year:
 
 # Retrieve cached data
 scenario_data = st.session_state.scenario_data
-print(scenario_data)
+# print(scenario_data)
 scenario_year_data = st.session_state.scenario_year_data
-print(scenario_year_data)
+# print(scenario_year_data)
 # --------------------------------------------------------------------------------------------------------------------------------
 # Data wrangling
 if scenario_data and not scenario_year_data.empty:
@@ -155,8 +155,18 @@ if scenario_data and not scenario_year_data.empty:
     glc_min_date = min(glc_full_merged_df["date"])
     glc_max_date = max(glc_full_merged_df["date"])
 
+
     glc_min_velocity = min(glc_full_merged_df["velocity"])
     glc_max_velocity = max(glc_full_merged_df["velocity"])
+
+    old_min_velocity = min(old_full_merged_df["velocity"])
+    old_max_velocity = max(old_full_merged_df["velocity"])
+    
+    mid_min_velocity = min(mid_full_merged_df["velocity"])
+    mid_max_velocity = max(mid_full_merged_df["velocity"])
+
+    max_velocity = max(glc_max_velocity, old_max_velocity, mid_max_velocity)
+    min_velocity = min(glc_min_velocity, old_min_velocity, mid_min_velocity)
 
     velocity_summary_stats_title = (
         f"Summary stats of fish passage from {glc_min_date} to {glc_max_date}."
@@ -507,7 +517,9 @@ if scenario_data and not scenario_year_data.empty:
         (old_hydro_df["datetime"] >= start_date)
         & (old_hydro_df["datetime"] <= end_date)
     ]
-    # print(filtered_glc_df)
+    print("--------------------")
+    print(filtered_old_df.gate_max_datetime.max())
+    print("--------------------.")
     # #-------------------------------------------------------------------------------------------------------
     summary_stats_title = f"Summary stats from {start_date} to {end_date}."
     filtered_glc_avg_daily_velocity = calc_avg_daily_vel(filtered_glc_df)
@@ -566,9 +578,9 @@ if scenario_data and not scenario_year_data.empty:
         ).format(precision=2)
     )
     # #-------------------------------------------------------------------------------------------------------
-    glc_zoomed_vel_chart = generate_zoomed_velocity_charts(filtered_glc_df)
-    mid_zoomed_vel_chart = generate_zoomed_velocity_charts(filtered_mid_df)
-    old_zoomed_vel_chart = generate_zoomed_velocity_charts(filtered_old_df)
+    glc_zoomed_vel_chart = generate_zoomed_velocity_charts(filtered_glc_df, min_velocity, max_velocity)
+    mid_zoomed_vel_chart = generate_zoomed_velocity_charts(filtered_mid_df, min_velocity, max_velocity)
+    old_zoomed_vel_chart = generate_zoomed_velocity_charts(filtered_old_df, min_velocity, max_velocity)
     # st.write("#")
     col1, col2, col3 = viz_2_tab2.columns([10, 10, 10], gap="small")
     with col1:

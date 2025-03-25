@@ -459,7 +459,7 @@ def generate_velocity_gate_charts(full_merged_df, legend=None):
 
 
 # @st.cache_data
-def generate_zoomed_velocity_charts(filtered_merged_df):
+def generate_zoomed_velocity_charts(filtered_merged_df, min_velocity, max_velocity):
     color_palette = {
         "Velocity_Category": {
             "Over 8ft/s": "#a6cee3",
@@ -469,7 +469,7 @@ def generate_zoomed_velocity_charts(filtered_merged_df):
     }
     gate = filtered_merged_df["gate"].unique()[0]
     model = filtered_merged_df["model"].unique()[0]
-    shared_y_scale = alt.Scale(domain=[-5, 17])
+    shared_y_scale = alt.Scale(domain=[min_velocity, max_velocity])
 
     interval = alt.selection_interval(
         encodings=["x"], mark=alt.BrushConfig(fill="blue")
@@ -496,6 +496,8 @@ def generate_zoomed_velocity_charts(filtered_merged_df):
         .drop_duplicates()
         .reset_index(drop=True)
     )
+    print("CLOSED GATES")
+    print(max(closed_gates.gate_max_datetime))
     color_scale = alt.Scale(
         domain=["Closed"], range=[color_palette["gate_status"]["Closed"]]
     )
@@ -918,3 +920,78 @@ def generate_water_level_chart(filtered_hydro_df, filtered_merged_df):
     ).properties(width=700, height=400, title=f"Modeled Water Level at {gate}")
     return min_stage_chart
 
+def create_velocity_hist_chart(df, gate):
+    xrule = alt.Chart(df).mark_rule(
+            color="red", 
+            strokeDash=[12, 6], 
+            size=1.5
+        ).encode(
+            x=alt.datum(8),
+        )
+    v_hist =  alt.Chart(df).transform_joinaggregate(
+            total='count(*)'
+        ).transform_calculate(
+            pct='1/datum.total',
+        ).mark_bar(
+            color="#1f78b4",
+            opacity=0.7
+        ).encode(
+            alt.X('velocity:Q', title="Velocity (ft/s)", bin=alt.Bin(step=2)),
+            alt.Y('sum(pct):Q', title="Percent of Total Time", axis=alt.Axis(format='%'), scale=alt.Scale(domain=[0, 0.4])),
+            alt.Tooltip("sum(pct):Q", format="%"),
+        ).properties(
+            width=300,
+            height=500,
+            title=f"Velocity through \n{gate} fish passage"
+        )
+    return(alt.layer(v_hist, xrule))
+    
+
+def create_streak_hist_chart(df, gate):
+    streak_duration_counts = df.groupby(["group_min_datetime", "duration"]).size().reset_index(name="count").drop("count", axis=1)
+    streak_hist =  alt.Chart(streak_duration_counts).transform_joinaggregate(
+        total='count(*)'
+    ).transform_calculate(
+        pct='1/datum.total'
+    ).mark_bar(
+        color="#b2df8a",
+        opacity=0.7
+    ).encode(
+        x=alt.X("duration:Q", bin=alt.Bin(step=2), title="Hours"),
+        y=alt.Y("sum(pct):Q", title="Percent of Ebb Tides", axis=alt.Axis(format='%'), scale=alt.Scale(domain=[0, 0.4])),
+        tooltip=alt.Tooltip("sum(pct):Q", format="%")
+    ).properties(
+        title=f"{gate} consecutive hours \nabove 8ft/s",
+        width=300,
+        height=500
+    )
+    return(streak_hist)
+
+def create_elev_hist_chart(hydro_df, gate):
+    xrule = alt.Chart(hydro_df).mark_rule(
+            color="red", 
+            strokeDash=[12, 6], 
+            size=1.5
+        ).encode(
+            x=alt.datum(2.3),
+        )
+    elev_hist =  alt.Chart(hydro_df).transform_joinaggregate(
+            total='count(*)'
+        ).transform_calculate(
+            pct='1/datum.total',
+        ).mark_bar(
+            color="#1f78b4",
+            opacity=0.7
+        ).encode(
+            alt.X('water_level:Q', title="ft NAVD88", bin=alt.Bin(step=0.5)),
+            alt.Y('sum(pct):Q', 
+                  title="% of Total Time during OP Season", 
+                  axis=alt.Axis(format='%'),
+                  scale=alt.Scale(domain=[0, 0.4])),
+            alt.Tooltip("sum(pct):Q", format="%")
+        ).properties(
+            width=300,
+            height=500,
+            title=f"Daily minimum stage at {gate}"
+        )
+    return(alt.layer(elev_hist, xrule))
